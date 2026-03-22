@@ -17,7 +17,26 @@ def crear_mes(anio: int, mes: int, db: Session = Depends(get_db)):
     existe = db.query(Mes).filter(Mes.anio == anio, Mes.mes == mes).first()
     if existe:
         raise HTTPException(status_code=400, detail="Ese mes ya existe")
-    nuevo = Mes(anio=anio, mes=mes, saldo_anterior=0)
+
+    anterior_anio = anio if mes > 1 else anio - 1
+    anterior_mes_num = mes - 1 if mes > 1 else 12
+    mes_anterior = db.query(Mes).filter(
+        Mes.anio == anterior_anio,
+        Mes.mes == anterior_mes_num
+    ).first()
+
+    saldo_inicial = 0
+    if mes_anterior and mes_anterior.sueldo_real is not None:
+        extras = db.query(IngresoExtra).filter(IngresoExtra.mes_id == mes_anterior.id).all()
+        total_extras = sum(e.monto for e in extras)
+        gastos = db.query(Gasto).filter(Gasto.mes_id == mes_anterior.id).all()
+        total_gastos = sum(g.monto for g in gastos)
+        pagos = db.query(PagoDeuda).filter(PagoDeuda.mes_id == mes_anterior.id).all()
+        total_pagos = sum(p.monto for p in pagos)
+        saldo_anterior_anterior = mes_anterior.saldo_anterior or 0
+        saldo_inicial = mes_anterior.sueldo_real + saldo_anterior_anterior + total_extras - total_gastos - total_pagos
+
+    nuevo = Mes(anio=anio, mes=mes, saldo_anterior=saldo_inicial)
     db.add(nuevo)
     db.commit()
     db.refresh(nuevo)
@@ -98,7 +117,8 @@ def cerrar_mes(mes_id: int, liquido: float, bruto_real: float = None, db: Sessio
     if bruto_real:
         mes.notas = f"bruto_real:{bruto_real}"
 
-    # Traspasar saldo al mes siguiente
+    db.commit()
+
     siguiente_anio = mes.anio if mes.mes < 12 else mes.anio + 1
     siguiente_mes_num = mes.mes + 1 if mes.mes < 12 else 1
     mes_siguiente = db.query(Mes).filter(
@@ -108,7 +128,7 @@ def cerrar_mes(mes_id: int, liquido: float, bruto_real: float = None, db: Sessio
 
     if mes_siguiente:
         mes_siguiente.saldo_anterior = saldo_libre
+        db.commit()
 
-    db.commit()
     db.refresh(mes)
-    return {"mensaje": "Mes cerrado", "saldo_libre": saldo_libre}
+    return {"mensaje": "Mes cerrado", "saldo_libre": saldo_libre, "saldo_traspasado": saldo_libre if mes_siguiente else None}

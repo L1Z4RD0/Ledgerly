@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from database import get_db
 from models import Gasto, Mes
+from models import Gasto, Mes, IngresoExtra, PagoDeuda
 
 router = APIRouter()
 

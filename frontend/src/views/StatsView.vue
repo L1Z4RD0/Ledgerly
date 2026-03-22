@@ -34,10 +34,10 @@
           <div v-for="r in resumenes" :key="r.mes_id" class="bar-group">
             <div class="bar-label">
               <span>{{ nombreMes(r.mes) }} {{ r.anio }}</span>
-              <span>{{ formatCLP(r.neto_final) }}</span>
+              <span>{{ r.saldo_libre !== null ? formatCLP(r.saldo_libre) : 'En curso' }}</span>
             </div>
             <div class="bar-track">
-              <div class="bar-fill blue" :style="{ width: pctNeto(r.neto_final) + '%' }"></div>
+              <div class="bar-fill blue" :style="{ width: pctNeto(r.saldo_libre) + '%' }"></div>
             </div>
           </div>
         </div>
@@ -92,21 +92,21 @@
         <div v-else>
           <div class="tabla-header">
             <span>Mes</span>
-            <span>Bruto</span>
-            <span>AFP+Fonasa</span>
-            <span>Deudas</span>
+            <span>Bruto est.</span>
+            <span>Líquido real</span>
             <span>Extras</span>
             <span>Gastos</span>
+            <span>Pagos deuda</span>
             <span>Saldo libre</span>
           </div>
           <div v-for="r in resumenes" :key="r.mes_id" class="tabla-row">
             <span class="mes-label">{{ nombreMes(r.mes) }} {{ r.anio }}</span>
             <span>{{ formatCLP(r.bruto) }}</span>
-            <span class="red">−{{ formatCLP(r.descuento_afp + r.descuento_fonasa) }}</span>
-            <span class="red">−{{ formatCLP(r.total_deudas) }}</span>
-            <span class="green">+{{ formatCLP(r.total_extras) }}</span>
-            <span class="red">−{{ formatCLP(r.total_gastos) }}</span>
-            <span class="blue font-bold">{{ formatCLP(r.saldo_libre) }}</span>
+            <span>{{ r.sueldo_real ? formatCLP(r.sueldo_real) : '—' }}</span>
+            <span class="green">{{ r.total_extras > 0 ? '+' + formatCLP(r.total_extras) : '—' }}</span>
+            <span class="red">{{ r.total_gastos > 0 ? '−' + formatCLP(r.total_gastos) : '—' }}</span>
+            <span class="red">{{ r.total_pagos_deuda > 0 ? '−' + formatCLP(r.total_pagos_deuda) : '—' }}</span>
+            <span class="blue font-bold">{{ r.saldo_libre !== null ? formatCLP(r.saldo_libre) : 'En curso' }}</span>
           </div>
         </div>
       </div>
@@ -127,27 +127,47 @@ const nombreMes = (n) => nombresMeses[n - 1]
 const formatCLP = (n) => '$' + Math.round(n || 0).toLocaleString('es-CL')
 
 const resumenesCerrados = computed(() => resumenes.value.filter(r => r.sueldo_real))
+
 const promedioNeto = computed(() => {
-  if (!resumenes.value.length) return 0
-  return resumenes.value.reduce((acc, r) => acc + r.neto_final, 0) / resumenes.value.length
+  const cerrados = resumenesCerrados.value
+  if (!cerrados.length) return 0
+  return cerrados.reduce((acc, r) => acc + (r.sueldo_real || 0), 0) / cerrados.length
 })
-const mejorMes = computed(() => resumenes.value.length ? Math.max(...resumenes.value.map(r => r.neto_final)) : 0)
+
+const mejorMes = computed(() => {
+  const cerrados = resumenesCerrados.value
+  return cerrados.length ? Math.max(...cerrados.map(r => r.saldo_libre || 0)) : 0
+})
+
 const promedioGastos = computed(() => {
   if (!resumenes.value.length) return 0
-  return resumenes.value.reduce((acc, r) => acc + r.total_gastos, 0) / resumenes.value.length
+  return resumenes.value.reduce((acc, r) => acc + (r.total_gastos || 0), 0) / resumenes.value.length
 })
+
 const promedioAhorro = computed(() => {
-  if (!resumenes.value.length) return 0
-  return resumenes.value.reduce((acc, r) => acc + r.saldo_libre, 0) / resumenes.value.length
+  const cerrados = resumenesCerrados.value
+  if (!cerrados.length) return 0
+  return cerrados.reduce((acc, r) => acc + (r.saldo_libre || 0), 0) / cerrados.length
 })
 
-const maxNeto = computed(() => resumenes.value.length ? Math.max(...resumenes.value.map(r => r.neto_final)) : 1)
-const maxBruto = computed(() => resumenes.value.length ? Math.max(...resumenes.value.map(r => Math.max(r.bruto, r.sueldo_real || 0))) : 1)
-const maxCat = computed(() => Object.values(gastosCatTotal.value).length ? Math.max(...Object.values(gastosCatTotal.value)) : 1)
+const maxSaldo = computed(() => {
+  const vals = resumenes.value.map(r => r.saldo_libre || 0)
+  return vals.length ? Math.max(...vals, 1) : 1
+})
 
-const pctNeto = (n) => Math.round((n / maxNeto.value) * 100)
-const pctBruto = (n) => Math.round((n / maxBruto.value) * 100)
-const pctCat = (n) => Math.round((n / maxCat.value) * 100)
+const maxBruto = computed(() => {
+  const vals = resumenes.value.map(r => Math.max(r.bruto || 0, r.sueldo_real || 0))
+  return vals.length ? Math.max(...vals, 1) : 1
+})
+
+const maxCat = computed(() => {
+  const vals = Object.values(gastosCatTotal.value)
+  return vals.length ? Math.max(...vals, 1) : 1
+})
+
+const pctNeto = (n) => Math.round(((n || 0) / maxSaldo.value) * 100)
+const pctBruto = (n) => Math.round(((n || 0) / maxBruto.value) * 100)
+const pctCat = (n) => Math.round(((n || 0) / maxCat.value) * 100)
 
 const cargarDatos = async () => {
   const res = await mesesService.getAll()
@@ -162,8 +182,8 @@ const cargarDatos = async () => {
       for (const [cat, monto] of Object.entries(cats.data)) {
         catAcum[cat] = (catAcum[cat] || 0) + monto
       }
-    } catch {
-      // mes sin datos aún
+    } catch (e) { // eslint-disable-line no-unused-vars
+      // mes sin datos
     }
   }
   resumenes.value = resList
