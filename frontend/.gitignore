@@ -14,6 +14,9 @@ dist-ssr
 coverage
 *.local
 
+backend/ledgerly.db
+backend/migrations/versions/__pycache__/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
