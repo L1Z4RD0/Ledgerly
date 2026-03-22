@@ -1,0 +1,48 @@
+.view { background: var(--bg) !important; color: var(--text-primary) !important; }
+.topbar { background: var(--bg-card) !important; border-bottom: 1px solid var(--border) !important; }
+.topbar-title { color: var(--text-primary) !important; }
+.topbar-sub { color: var(--text-secondary) !important; }
+.metric-card { background: var(--bg-metric) !important; }
+.metric-label { color: var(--text-secondary) !important; }
+.metric-val { color: var(--text-primary) !important; }
+.card { background: var(--bg-card) !important; border-color: var(--border) !important; }
+.card-title { color: var(--text-secondary) !important; }
+.card-mes { color: var(--text-primary) !important; }
+.card-sub { color: var(--text-secondary) !important; }
+.input { background: var(--bg-card) !important; border-color: var(--border) !important; color: var(--text-primary) !important; }
+.select-mes { background: var(--bg-card) !important; border-color: var(--border) !important; color: var(--text-primary) !important; }
+.lbl { color: var(--text-secondary) !important; }
+.breakdown-row { border-color: var(--border-light) !important; color: var(--text-primary) !important; }
+.detail-row { border-color: var(--border-light) !important; color: var(--text-primary) !important; }
+.btn-secondary { background: var(--bg-card) !important; border-color: var(--border) !important; color: var(--text-primary) !important; }
+.btn-round { background: var(--bg-card) !important; border-color: var(--border) !important; color: var(--text-primary) !important; }
+.modal { background: var(--bg-card) !important; color: var(--text-primary) !important; }
+.modal-title { color: var(--text-primary) !important; }
+.form-group label { color: var(--text-secondary) !important; }
+.semana-row { border-color: var(--border-light) !important; }
+.semana-turnos { color: var(--text-secondary) !important; }
+.gasto-row { border-color: var(--border-light) !important; }
+.gasto-nombre { color: var(--text-primary) !important; }
+.gasto-cat { color: var(--text-muted) !important; }
+.extra-row { border-color: var(--border-light) !important; }
+.extra-nombre { color: var(--text-primary) !important; }
+.extra-fecha { color: var(--text-muted) !important; }
+.debt-nombre { color: var(--text-primary) !important; }
+.debt-cuota { color: var(--text-secondary) !important; }
+.debt-footer { color: var(--text-muted) !important; }
+.debt-item { border-color: var(--border-light) !important; }
+.hist-header { color: var(--text-muted) !important; border-color: var(--border) !important; }
+.hist-row { border-color: var(--border-light) !important; color: var(--text-primary) !important; }
+.tabla-header { color: var(--text-muted) !important; border-color: var(--border) !important; }
+.tabla-row { border-color: var(--border-light) !important; color: var(--text-primary) !important; }
+.bar-track { background: var(--bg-metric) !important; }
+.bar-label { color: var(--text-secondary) !important; }
+.empty-state { color: var(--text-muted) !important; }
+.empty-state-big { color: var(--text-muted) !important; }
+.semana-total { border-color: var(--border) !important; color: var(--text-primary) !important; }
+.gasto-total { border-color: var(--border) !important; color: var(--text-primary) !important; }
+.extra-total { border-color: var(--border) !important; color: var(--text-primary) !important; }
+.diferencia-row { border-color: var(--border-light) !important; }
+.nav-section { color: var(--text-muted) !important; }
+.week-turns { color: var(--text-secondary) !important; }
+.page-content { background: var(--bg) !important; }
