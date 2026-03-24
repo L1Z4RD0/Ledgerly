@@ -13,7 +13,7 @@ y luego hacer un npm run dev para que empiece a correr en local
 ------------------------------------------------------------------------------------------------------------------------------------
 Para hacer el push al GitHub
 
-cd "C:\Users\diego\OneDrive - Corporación Santo Tomas\Desktop\Ledgerly"
+cd "C:\Users\Diego\Desktop\Ledgerly>"
 git add .
 git commit -m "fix: saldo entre meses, historial deudas, estadisticas"
 git push

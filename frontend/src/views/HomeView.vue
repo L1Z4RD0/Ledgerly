@@ -29,10 +29,14 @@
           <div class="metric-label">Neto estimado</div>
           <div class="metric-val blue">{{ formatCLP(resumen.neto_estimado) }}</div>
         </div>
-        <div class="metric-card">
+        
+        <div class="metric-card" :class="{ 'is-critical': !resumen.mes_cerrado && resumen.saldo_disponible < 50000 }">
           <div class="metric-label">{{ resumen.mes_cerrado ? 'Saldo libre final' : 'Disponible ahora' }}</div>
           <div class="metric-val green" v-if="resumen.mes_cerrado">{{ formatCLP(resumen.saldo_libre) }}</div>
-          <div class="metric-val green" v-else>{{ formatCLP(resumen.saldo_disponible) }}</div>
+          <div class="metric-val green" v-else>
+            {{ formatCLP(resumen.saldo_disponible) }}
+            <span v-if="resumen.saldo_disponible < 50000" class="mini-alert">⚠️ Bajo</span>
+          </div>
         </div>
       </div>
 
@@ -216,7 +220,9 @@ const formatCLP = (n) => {
 const nombreMes = (n) => nombresMeses[n - 1]
 
 const pctGasto = (monto) => {
-  const max = Math.max(...Object.values(gastosCat.value))
+  const values = Object.values(gastosCat.value)
+  if (values.length === 0) return 0
+  const max = Math.max(...values)
   return max > 0 ? Math.round((monto / max) * 100) : 0
 }
 
@@ -268,12 +274,36 @@ onMounted(cargarMeses)
 .select-mes { padding: 6px 10px; border: 1px solid var(--border); border-radius: 8px; font-size: 13px; background: var(--bg-card); color: var(--text-primary); }
 .page-content { padding: 20px 24px; display: flex; flex-direction: column; gap: 16px; }
 .metrics-row { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 12px; }
-.metric-card { background: var(--bg-metric); border-radius: 10px; padding: 14px; }
+.metric-card { background: var(--bg-metric); border-radius: 10px; padding: 14px; transition: all 0.3s ease; }
 .metric-label { font-size: 11px; color: var(--text-secondary); margin-bottom: 6px; }
 .metric-val { font-size: 20px; font-weight: 600; color: var(--text-primary); }
 .metric-val.red { color: #993C1D; }
 .metric-val.blue { color: #185FA5; }
 .metric-val.green { color: #0F6E56; }
+
+/* NUEVOS ESTILOS PARA ALERTA */
+.metric-card.is-critical {
+  border: 1px solid #993C1D;
+  background: rgba(153, 60, 29, 0.05) !important;
+  animation: pulse-border 2s infinite;
+}
+
+.mini-alert {
+  font-size: 10px;
+  background: #993C1D;
+  color: white;
+  padding: 2px 6px;
+  border-radius: 4px;
+  vertical-align: middle;
+  margin-left: 5px;
+}
+
+@keyframes pulse-border {
+  0% { box-shadow: 0 0 0 0 rgba(153, 60, 29, 0.4); }
+  70% { box-shadow: 0 0 0 6px rgba(153, 60, 29, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(153, 60, 29, 0); }
+}
+
 .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 .card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 16px; }
 .card-title { font-size: 11px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 14px; }
@@ -287,7 +317,7 @@ onMounted(cargarMeses)
 .blue { color: #185FA5; }
 .green { color: #0F6E56; }
 .aviso-mes { margin-top: 14px; padding: 12px; background: var(--bg-metric); border-radius: 8px; font-size: 13px; color: var(--text-secondary); text-align: center; }
-.cerrar-desc { font-size: 13px; color: var(--text-secondary); margin-bottom: 12px; }
+.cerrar-desc { font-size: 13px; color: #888; margin-bottom: 12px; }
 .form-row { display: flex; gap: 12px; flex-wrap: wrap; }
 .form-group { flex: 1; min-width: 160px; }
 .form-group label { font-size: 12px; color: var(--text-secondary); display: block; margin-bottom: 4px; }
@@ -301,7 +331,6 @@ onMounted(cargarMeses)
 .btn-primary { padding: 8px 16px; background: #185FA5; color: #fff; border: none; border-radius: 8px; font-size: 13px; cursor: pointer; white-space: nowrap; }
 .btn-primary:hover { background: #0C447C; }
 .btn-secondary { padding: 8px 16px; background: var(--bg-card); color: var(--text-primary); border: 1px solid var(--border); border-radius: 8px; font-size: 13px; cursor: pointer; }
-.form-group { margin-bottom: 12px; }
 .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; z-index: 200; }
 .modal { background: var(--bg-card); border-radius: 14px; padding: 24px; width: 320px; }
 .modal-title { font-size: 15px; font-weight: 600; margin-bottom: 16px; color: var(--text-primary); }
