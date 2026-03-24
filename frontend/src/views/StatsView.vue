@@ -81,12 +81,13 @@
 
 <script setup>
 import { ref, onMounted, computed } from 'vue'
-import { mesesService, gastosService } from '../services/api'
+import { mesesService, gastosService, ahorrosService } from '../services/api'
 
 // --- ESTADO ---
 const meses = ref([])
 const resumenes = ref([])
 const gastosCatTotal = ref({})
+const ahorros = ref([])
 
 // --- UTILIDADES ---
 const nombresMeses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
@@ -176,9 +177,12 @@ const compareOptions = computed(() => ({
 
 // --- 4. CONFIG RADIAL BAR (TASA DE AHORRO) ---
 const saveRate = computed(() => {
-  const ingresos = resumenesCerrados.value.reduce((acc, r) => acc + (r.sueldo_real + r.total_extras), 0)
-  const ahorro = resumenesCerrados.value.reduce((acc, r) => acc + (r.saldo_libre || 0), 0)
-  return ingresos > 0 ? Math.round((ahorro / ingresos) * 100) : 0
+  const cerrados = resumenesCerrados.value
+  const ingresos = cerrados.reduce((acc, r) => acc + (r.sueldo_real + r.total_extras), 0)
+  const ahorroMeses = cerrados.reduce((acc, r) => acc + (r.saldo_libre || 0), 0)
+  const ahorroModulo = ahorros.value.reduce((acc, a) => acc + a.monto_actual, 0)
+  const totalAhorro = ahorroMeses + ahorroModulo
+  return ingresos > 0 ? Math.round((totalAhorro / ingresos) * 100) : 0
 })
 
 const saveOptions = {
@@ -197,6 +201,13 @@ const saveOptions = {
 
 // --- CARGA DE DATOS ---
 const cargarDatos = async () => {
+  // Cargar ahorros
+  try {
+    const resAhorros = await ahorrosService.getActivos()
+    ahorros.value = resAhorros.data
+  } catch { /* sin ahorros */ }
+
+  // Cargar meses y resumenes
   const res = await mesesService.getAll()
   meses.value = res.data
   const resList = []

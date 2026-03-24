@@ -127,19 +127,34 @@
         </div>
 
         <div class="card">
-          <div class="card-title">Gastos por categoría</div>
+          <div class="card-title">Análisis de Gastos</div>
           <div v-if="Object.keys(gastosCat).length === 0" class="empty-state">
-            Sin gastos registrados aún
+            Sin gastos registrados
           </div>
-          <div v-for="(monto, cat) in gastosCat" :key="cat" class="bar-group">
-            <div class="bar-label">
-              <span>{{ cat }}</span>
-              <span>{{ formatCLP(monto) }}</span>
+          <template v-else>
+            <div style="margin-bottom: 16px;">
+              <div class="donut-chart-wrapper">
+                <apexchart type="donut" height="240" :options="donutEsencialOptions" :series="[gastosEsencial, gastosDiscrecional]"></apexchart>
+              </div>
+              <div class="donut-legend">
+                <div class="legend-item">
+                  <span class="legend-dot" style="background: #0F6E56;"></span>
+                  <span>Esencial: {{ formatCLP(gastosEsencial) }}</span>
+                </div>
+                <div class="legend-item">
+                  <span class="legend-dot" style="background: #185FA5;"></span>
+                  <span>Discrecional: {{ formatCLP(gastosDiscrecional) }}</span>
+                </div>
+              </div>
             </div>
-            <div class="bar-track">
-              <div class="bar-fill" :style="{ width: pctGasto(monto) + '%' }"></div>
+            <div style="border-top: 1px solid var(--border); padding-top: 12px;">
+              <div class="topbar-title" style="font-size: 12px; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px;">Top 3 categorías</div>
+              <div v-for="item in categoriasPrincipales" :key="item.cat" class="top-cat-row">
+                <span class="cat-name">{{ item.cat }}</span>
+                <span class="cat-monto">{{ formatCLP(item.monto) }}</span>
+              </div>
             </div>
-          </div>
+          </template>
         </div>
       </div>
 
@@ -197,7 +212,30 @@ const meses = ref([])
 const mesSeleccionado = ref(null)
 const resumen = ref(null)
 const gastosCat = ref({})
-const sueldoReal = ref('')
+const gastosEsencial = computed(() => {
+  const palabrasClave = ['almuerzo', 'comida', 'compra', 'super', 'mercado', 'verdura', 'carne', 'pan', 'leche', 'arriendo', 'luz', 'agua', 'internet', 'telefono', 'transporte', 'bencina', 'metro', 'pasaje', 'medico', 'farmacia', 'medicina']
+  let esencial = 0
+  for (const [cat, monto] of Object.entries(gastosCat.value)) {
+    const lower = cat.toLowerCase()
+    if (palabrasClave.some(p => lower.includes(p))) {
+      esencial += monto
+    }
+  }
+  return esencial
+})
+
+const gastosDiscrecional = computed(() => {
+  const total = Object.values(gastosCat.value).reduce((a, b) => a + b, 0)
+  return total - gastosEsencial.value
+})
+
+const categoriasPrincipales = computed(() => {
+  const sorted = Object.entries(gastosCat.value)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 3)
+    .map(([cat, monto]) => ({ cat, monto }))
+  return sorted
+})
 const sueldoBrutoReal = ref('')
 const mostrarModalNuevoMes = ref(false)
 const nuevoAnio = ref(new Date().getFullYear())
@@ -224,6 +262,17 @@ const pctGasto = (monto) => {
   if (values.length === 0) return 0
   const max = Math.max(...values)
   return max > 0 ? Math.round((monto / max) * 100) : 0
+}
+
+const donutEsencialOptions = {
+  labels: ['Esencial', 'Discrecional'],
+  chart: { fontFamily: 'inherit', toolbar: { show: false } },
+  colors: ['#0F6E56', '#185FA5'],
+  plotOptions: { pie: { donut: { size: '70%' } } },
+  dataLabels: { enabled: false },
+  stroke: { show: false },
+  legend: { show: false },
+  tooltip: { theme: 'dark', y: { formatter: (v) => formatCLP(v) } }
 }
 
 const cargarMeses = async () => {
@@ -335,6 +384,14 @@ onMounted(cargarMeses)
 .modal { background: var(--bg-card); border-radius: 14px; padding: 24px; width: 320px; }
 .modal-title { font-size: 15px; font-weight: 600; margin-bottom: 16px; color: var(--text-primary); }
 .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 16px; }
+.donut-chart-wrapper { display: flex; justify-content: center; }
+.donut-legend { display: flex; flex-direction: column; gap: 8px; }
+.legend-item { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-primary); }
+.legend-dot { width: 12px; height: 12px; border-radius: 50%; }
+.top-cat-row { display: flex; justify-content: space-between; padding: 6px 0; font-size: 12px; border-bottom: 1px solid var(--border-light); }
+.top-cat-row:last-child { border-bottom: none; }
+.cat-name { color: var(--text-secondary); }
+.cat-monto { font-weight: 600; color: var(--text-primary); }
 
 @media (max-width: 768px) {
   .metrics-row { grid-template-columns: 1fr 1fr; }

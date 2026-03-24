@@ -15,6 +15,7 @@ class Mes(Base):
     gastos = relationship("Gasto", back_populates="mes", cascade="all, delete")
     ingresos_extra = relationship("IngresoExtra", back_populates="mes", cascade="all, delete")
     pagos_deuda = relationship("PagoDeuda", back_populates="mes", cascade="all, delete")
+    aportes_ahorro = relationship("AporteAhorro", back_populates="mes", cascade="all, delete")
 
 
 class Semana(Base):
@@ -74,3 +75,30 @@ class PagoDeuda(Base):
 
     mes = relationship("Mes", back_populates="pagos_deuda")
     deuda = relationship("Deuda", back_populates="pagos")
+
+
+class Ahorro(Base):
+    __tablename__ = "ahorros"
+    id = Column(Integer, primary_key=True, index=True)
+    nombre = Column(String, nullable=False)
+    descripcion = Column(String, nullable=True)
+    monto_meta = Column(Float, nullable=True)  # Meta opcional
+    monto_actual = Column(Float, nullable=False, default=0)
+    cuota = Column(Float, nullable=False)
+    tipo = Column(String, nullable=False, default="fijo")
+    activo = Column(Boolean, nullable=False, default=True)
+    fecha_inicio = Column(String, nullable=False)
+
+    aportes = relationship("AporteAhorro", back_populates="ahorro", cascade="all, delete")
+
+
+class AporteAhorro(Base):
+    __tablename__ = "aportes_ahorro"
+    id = Column(Integer, primary_key=True, index=True)
+    mes_id = Column(Integer, ForeignKey("meses.id"), nullable=False)
+    ahorro_id = Column(Integer, ForeignKey("ahorros.id"), nullable=False)
+    monto = Column(Float, nullable=False)
+    fecha = Column(String, nullable=False)
+
+    mes = relationship("Mes", back_populates="aportes_ahorro")
+    ahorro = relationship("Ahorro", back_populates="aportes")

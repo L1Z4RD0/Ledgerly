@@ -20,6 +20,9 @@
         <RouterLink to="/deudas" class="nav-item" @click="cerrarMenu">
           <span class="nav-icon">◎</span> Deudas
         </RouterLink>
+        <RouterLink to="/ahorros" class="nav-item" @click="cerrarMenu">
+          <span class="nav-icon">◆</span> Ahorros
+        </RouterLink>
         <RouterLink to="/extras" class="nav-item" @click="cerrarMenu">
           <span class="nav-icon">+</span> Extras
         </RouterLink>
@@ -199,7 +202,6 @@ nav { flex: 1; padding: 8px 0; }
   flex-direction: column;
   gap: 12px;
 }
-.footer-top {}
 .footer-label { font-size: 11px; color: var(--text-muted); display: block; }
 .footer-val { font-size: 14px; font-weight: 500; color: var(--text-primary); display: block; margin-top: 2px; }
 

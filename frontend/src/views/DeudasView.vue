@@ -125,9 +125,17 @@
     <div v-if="mostrarModalPago" class="modal-overlay" @click.self="mostrarModalPago = false">
       <div class="modal">
         <div class="modal-title">Registrar pago — {{ deudaSeleccionada?.nombre }}</div>
+        <div v-if="deudaSeleccionada?.tipo === 'porcentaje' && mesResumen" class="form-group info-box">
+          <span class="info-label">Tipo:</span>
+          <span class="info-value">{{ deudaSeleccionada.cuota }}% del disponible</span>
+          <span class="info-label" style="margin-top: 8px;">Disponible ahora:</span>
+          <span class="info-value">{{ formatCLP(mesResumen.saldo_disponible || mesResumen.saldo_libre) }}</span>
+          <span class="info-label" style="margin-top: 8px;">Monto a pagar:</span>
+          <span class="info-value green">{{ formatCLP(montoCalculado) }}</span>
+        </div>
         <div class="form-group">
           <label>Monto a pagar (CLP)</label>
-          <input v-model="montoPago" type="number" class="input" :placeholder="'Sugerido: ' + deudaSeleccionada?.cuota" />
+          <input v-model.number="montoPago" type="number" class="input" />
         </div>
         <div class="aviso" v-if="!mesSeleccionado">Selecciona un mes primero</div>
         <div class="modal-actions">
@@ -147,10 +155,12 @@ const meses = ref([])
 const mesSeleccionado = ref(null)
 const deudas = ref([])
 const pagosMes = ref([])
+const mesResumen = ref(null)
 const mostrarModal = ref(false)
 const mostrarModalPago = ref(false)
 const deudaSeleccionada = ref(null)
 const montoPago = ref('')
+const montoCalculado = ref(0)
 const nuevaNombre = ref('')
 const nuevoMontoTotal = ref('')
 const nuevoTipo = ref('fijo')
@@ -185,6 +195,27 @@ const cargarPagosMes = async () => {
   if (!mesSeleccionado.value) return
   const res = await deudasService.getPagosMes(mesSeleccionado.value)
   pagosMes.value = res.data
+  await cargarResumenMes()
+}
+
+const cargarResumenMes = async () => {
+  if (!mesSeleccionado.value) return
+  try {
+    const res = await mesesService.getResumen(mesSeleccionado.value)
+    mesResumen.value = res.data
+  } catch (e) {
+    mesResumen.value = null
+  }
+}
+
+const calcularMontoPago = (deuda) => {
+  if (deuda.tipo === 'fijo') {
+    return deuda.cuota
+  } else if (deuda.tipo === 'porcentaje' && mesResumen.value) {
+    const disponible = mesResumen.value.saldo_disponible || mesResumen.value.saldo_libre || 0
+    return (deuda.cuota / 100) * disponible
+  }
+  return deuda.cuota
 }
 
 const crearDeuda = async () => {
@@ -199,13 +230,14 @@ const crearDeuda = async () => {
 
 const abrirPago = (d) => {
   deudaSeleccionada.value = d
-  montoPago.value = d.cuota
+  montoCalculado.value = calcularMontoPago(d)
+  montoPago.value = montoCalculado.value
   mostrarModalPago.value = true
 }
 
 const registrarPago = async () => {
   if (!montoPago.value || !mesSeleccionado.value) return
-  await deudasService.pagar(deudaSeleccionada.value.id, mesSeleccionado.value, montoPago.value)
+  await deudasService.pagar(deudaSeleccionada.value.id, mesSeleccionado.value, parseFloat(montoPago.value))
   mostrarModalPago.value = false
   montoPago.value = ''
   await cargarDeudas()
@@ -272,6 +304,10 @@ onMounted(async () => {
 .modal-title { font-size: 15px; font-weight: 600; margin-bottom: 16px; color: var(--text-primary); }
 .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 16px; }
 .aviso { font-size: 12px; color: #854F0B; background: #FAEEDA; padding: 8px 12px; border-radius: 6px; margin-top: 8px; }
+.info-box { background: var(--bg-metric); padding: 12px; border-radius: 8px; border-left: 3px solid var(--accent); display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+.info-label { font-size: 11px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.4px; }
+.info-value { font-size: 13px; font-weight: 500; color: var(--text-primary); }
+.info-value.green { color: #0F6E56; }
 .red { color: #993C1D; }
 
 @media (max-width: 768px) {

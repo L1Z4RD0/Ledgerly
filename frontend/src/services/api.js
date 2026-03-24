@@ -59,3 +59,17 @@ export const extrasService = {
     api.put(`/extras/${extraId}?descripcion=${descripcion}&monto=${monto}&fecha=${fecha}`),
   eliminar: (extraId) => api.delete(`/extras/${extraId}`)
 }
+
+export const ahorrosService = {
+  getAll: () => api.get('/ahorros/'),
+  getActivos: () => api.get('/ahorros/activos'),
+  getAportesMes: (mesId) => api.get(`/ahorros/${mesId}/aportes`),
+  crear: (nombre, descripcion, montoMeta, cuota, tipo = 'fijo') =>
+    api.post(`/ahorros/?nombre=${nombre}&descripcion=${descripcion}&monto_meta=${montoMeta}&cuota=${cuota}&tipo=${tipo}`),
+  actualizar: (ahorroId, nombre, descripcion, montoMeta, cuota, tipo) =>
+    api.put(`/ahorros/${ahorroId}?nombre=${nombre}&descripcion=${descripcion}&monto_meta=${montoMeta}&cuota=${cuota}&tipo=${tipo}`),
+  aportar: (ahorroId, mesId, monto) =>
+    api.post(`/ahorros/${ahorroId}/aportar?mes_id=${mesId}&monto=${monto}`),
+  desactivar: (ahorroId) => api.put(`/ahorros/${ahorroId}/desactivar`),
+  eliminar: (ahorroId) => api.delete(`/ahorros/${ahorroId}`)
+}
