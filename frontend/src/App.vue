@@ -1,32 +1,33 @@
 <template>
   <div class="app-layout" :class="{ dark: isDark }">
-    <aside class="sidebar">
+    <!-- Sidebar para desktop y drawer para mobile -->
+    <aside class="sidebar" :class="{ 'mobile-drawer-open': menuOpen && isMobile }">
       <div class="sidebar-header">
         <span class="logo">Ledgerly</span>
         <span class="logo-sub">{{ mesActual }}</span>
       </div>
       <nav>
         <span class="nav-section">General</span>
-        <RouterLink to="/" class="nav-item">
+        <RouterLink to="/" class="nav-item" @click="cerrarMenu">
           <span class="nav-icon">◈</span> Inicio
         </RouterLink>
-        <RouterLink to="/turnos" class="nav-item">
+        <RouterLink to="/turnos" class="nav-item" @click="cerrarMenu">
           <span class="nav-icon">◷</span> Turnos
         </RouterLink>
-        <RouterLink to="/gastos" class="nav-item">
+        <RouterLink to="/gastos" class="nav-item" @click="cerrarMenu">
           <span class="nav-icon">◉</span> Gastos
         </RouterLink>
-        <RouterLink to="/deudas" class="nav-item">
+        <RouterLink to="/deudas" class="nav-item" @click="cerrarMenu">
           <span class="nav-icon">◎</span> Deudas
         </RouterLink>
-        <RouterLink to="/extras" class="nav-item">
+        <RouterLink to="/extras" class="nav-item" @click="cerrarMenu">
           <span class="nav-icon">+</span> Extras
         </RouterLink>
         <span class="nav-section">Análisis</span>
-        <RouterLink to="/stats" class="nav-item">
+        <RouterLink to="/stats" class="nav-item" @click="cerrarMenu">
           <span class="nav-icon">▦</span> Estadísticas
         </RouterLink>
-        <RouterLink to="/historial" class="nav-item">
+        <RouterLink to="/historial" class="nav-item" @click="cerrarMenu">
           <span class="nav-icon">◁</span> Historial
         </RouterLink>
       </nav>
@@ -45,18 +46,17 @@
       </div>
     </aside>
 
-    <div class="mobile-tabs" v-if="isMobile">
-      <RouterLink to="/" class="tab-item"><span>◈</span><span>Inicio</span></RouterLink>
-      <RouterLink to="/turnos" class="tab-item"><span>◷</span><span>Turnos</span></RouterLink>
-      <RouterLink to="/gastos" class="tab-item"><span>◉</span><span>Gastos</span></RouterLink>
-      <RouterLink to="/deudas" class="tab-item"><span>◎</span><span>Deudas</span></RouterLink>
-      <RouterLink to="/extras" class="tab-item"><span>+</span><span>Extras</span></RouterLink>
-      <RouterLink to="/stats" class="tab-item"><span>▦</span><span>Stats</span></RouterLink>
-      <RouterLink to="/historial" class="tab-item"><span>◁</span><span>Historial</span></RouterLink>
-      <button class="tab-item tab-theme" @click="toggleDark">
-        <span>{{ isDark ? '☀' : '☾' }}</span>
-        <span>{{ isDark ? 'Claro' : 'Oscuro' }}</span>
+    <!-- Overlay para cerrar el menú en mobile -->
+    <div v-if="menuOpen && isMobile" class="mobile-overlay" @click="menuOpen = false"></div>
+
+    <!-- Botón hamburguesa para mobile -->
+    <div v-if="isMobile" class="mobile-header">
+      <button class="hamburger" @click="menuOpen = !menuOpen" :class="{ active: menuOpen }">
+        <span></span>
+        <span></span>
+        <span></span>
       </button>
+      <span class="mobile-title">Ledgerly</span>
     </div>
 
     <main class="main-content" :class="{ 'main-mobile': isMobile }">
@@ -70,6 +70,7 @@ import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { RouterLink, RouterView } from 'vue-router'
 
 const windowWidth = ref(window.innerWidth)
+const menuOpen = ref(false)
 const isMobile = computed(() => windowWidth.value < 768)
 const isDark = ref(localStorage.getItem('ledgerly-theme') === 'dark')
 
@@ -83,7 +84,17 @@ const toggleDark = () => {
   localStorage.setItem('ledgerly-theme', isDark.value ? 'dark' : 'light')
 }
 
-const handleResize = () => { windowWidth.value = window.innerWidth }
+const cerrarMenu = () => {
+  menuOpen.value = false
+}
+
+const handleResize = () => { 
+  windowWidth.value = window.innerWidth
+  if (windowWidth.value >= 768) {
+    menuOpen.value = false
+  }
+}
+
 onMounted(() => window.addEventListener('resize', handleResize))
 onUnmounted(() => window.removeEventListener('resize', handleResize))
 </script>
@@ -152,6 +163,21 @@ body { margin: 0; }
   transition: background 0.2s, border-color 0.2s;
 }
 
+@media (max-width: 767px) {
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: -210px;
+    width: 210px;
+    height: 100vh;
+    z-index: 101;
+    transition: left 0.3s ease;
+  }
+  .sidebar.mobile-drawer-open {
+    left: 0;
+  }
+}
+
 .sidebar-header {
   padding: 20px 16px 16px;
   border-bottom: 1px solid var(--border);
@@ -215,31 +241,89 @@ nav { flex: 1; padding: 8px 0; }
 .switch.on .switch-thumb { left: 17px; }
 
 .main-content { margin-left: 210px; flex: 1; min-height: 100vh; transition: background 0.2s; }
-.main-mobile { margin-left: 0; padding-bottom: 60px; }
 
-.mobile-tabs {
-  display: flex;
-  position: fixed;
-  bottom: 0; left: 0; right: 0;
-  background: var(--bg-sidebar);
-  border-top: 1px solid var(--border);
-  z-index: 100;
-  overflow-x: auto;
+@media (max-width: 767px) {
+  .main-content {
+    margin-left: 0;
+    margin-top: 50px;
+  }
 }
-.tab-item {
-  flex: 1;
+
+.main-mobile { margin-left: 0; margin-top: 50px; }
+
+.mobile-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.4);
+  z-index: 99;
+}
+
+.mobile-header {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 50px;
+  background: var(--bg-card);
+  border-bottom: 1px solid var(--border);
+  z-index: 98;
+  align-items: center;
+  gap: 12px;
+  padding: 0 16px;
+}
+
+@media (max-width: 767px) {
+  .mobile-header {
+    display: flex;
+  }
+}
+
+.hamburger {
+  width: 32px;
+  height: 32px;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  padding: 8px 4px;
-  font-size: 10px;
-  color: var(--text-secondary);
-  text-decoration: none;
-  gap: 3px;
-  white-space: nowrap;
-  min-width: 50px;
+  justify-content: center;
+  gap: 5px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  flex-shrink: 0;
 }
-.tab-item.router-link-active { color: var(--accent); }
-.tab-item span:first-child { font-size: 15px; }
-.tab-theme { background: none; border: none; cursor: pointer; }
+
+.hamburger span {
+  width: 22px;
+  height: 2px;
+  background: var(--text-primary);
+  border-radius: 1px;
+  transition: all 0.3s ease;
+}
+
+.hamburger.active span:nth-child(1) {
+  transform: rotate(45deg) translate(8px, 8px);
+}
+
+.hamburger.active span:nth-child(2) {
+  opacity: 0;
+}
+
+.hamburger.active span:nth-child(3) {
+  transform: rotate(-45deg) translate(7px, -7px);
+}
+
+.mobile-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+  flex: 1;
+}
+
+.mobile-tabs {
+  display: none;
+}
 </style>
