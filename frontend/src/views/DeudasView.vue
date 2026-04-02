@@ -46,13 +46,13 @@
                 Cuota sugerida: {{ d.tipo === 'fijo' ? formatCLP(d.cuota) + '/mes' : d.cuota + '% del sueldo' }}
               </div>
             </div>
-            <div class="debt-actions">
-              <button @click="abrirPago(d)" class="btn-pagar">Registrar pago</button>
-              <button @click="desactivar(d.id)" class="btn-delete">×</button>
+            <div class="debt-right">
+              <div class="debt-actions">
+                <button @click="abrirPago(d)" class="btn-pagar">Registrar pago</button>
+                <button @click="desactivar(d.id)" class="btn-delete">×</button>
+              </div>
+              <ProgressCircle :percentage="pctPagado(d)" type="deudas" />
             </div>
-          </div>
-          <div class="progress-bar">
-            <div class="progress-fill" :style="{ width: pctPagado(d) + '%' }"></div>
           </div>
           <div class="debt-footer">
             <span>{{ formatCLP(d.monto_pagado) }} pagado</span>
@@ -85,9 +85,7 @@
               <div class="debt-cuota">{{ formatCLP(d.monto_total) }} — pagado completo</div>
             </div>
             <span class="badge-ok">Pagada</span>
-          </div>
-          <div class="progress-bar">
-            <div class="progress-fill" style="width:100%;background:#1D9E75"></div>
+            <ProgressCircle :percentage="100" type="deudas" />
           </div>
         </div>
       </div>
@@ -137,10 +135,11 @@
           <label>Monto a pagar (CLP)</label>
           <input v-model.number="montoPago" type="number" class="input" />
         </div>
+        <div class="aviso" v-if="mesSeleccionado && excedeSaldo">⚠️ No hay saldo disponible suficiente. Disponible ahora: {{ formatCLP(disponibleActual) }}</div>
         <div class="aviso" v-if="!mesSeleccionado">Selecciona un mes primero</div>
         <div class="modal-actions">
           <button @click="mostrarModalPago = false" class="btn-secondary">Cancelar</button>
-          <button @click="registrarPago" class="btn-primary" :disabled="!mesSeleccionado">Registrar</button>
+          <button @click="registrarPago" class="btn-primary" :disabled="!mesSeleccionado || excedeSaldo">Registrar</button>
         </div>
       </div>
     </div>
@@ -150,6 +149,7 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import { mesesService, deudasService } from '../services/api'
+import ProgressCircle from '../components/ProgressCircle.vue'
 
 const meses = ref([])
 const mesSeleccionado = ref(null)
@@ -177,6 +177,18 @@ const totalPagadoMes = computed(() => pagosMes.value.reduce((acc, p) => acc + p.
 const totalRestante = computed(() => deudasActivas.value.reduce((acc, d) => acc + (d.monto_total - d.monto_pagado), 0))
 const totalPagadoHistorico = computed(() => deudas.value.reduce((acc, d) => acc + d.monto_pagado, 0))
 
+const disponibleActual = computed(() => {
+  if (!mesResumen.value) return 0
+  return mesResumen.value.saldo_disponible !== null && mesResumen.value.saldo_disponible !== undefined
+    ? mesResumen.value.saldo_disponible
+    : (mesResumen.value.saldo_libre || 0)
+})
+
+const excedeSaldo = computed(() => {
+  const pago = parseFloat(montoPago.value) || 0
+  return pago > disponibleActual.value
+})
+
 const cargarMeses = async () => {
   const res = await mesesService.getAll()
   meses.value = res.data
@@ -203,7 +215,7 @@ const cargarResumenMes = async () => {
   try {
     const res = await mesesService.getResumen(mesSeleccionado.value)
     mesResumen.value = res.data
-  } catch (e) {
+  } catch {
     mesResumen.value = null
   }
 }
@@ -237,11 +249,22 @@ const abrirPago = (d) => {
 
 const registrarPago = async () => {
   if (!montoPago.value || !mesSeleccionado.value) return
-  await deudasService.pagar(deudaSeleccionada.value.id, mesSeleccionado.value, parseFloat(montoPago.value))
-  mostrarModalPago.value = false
-  montoPago.value = ''
-  await cargarDeudas()
-  await cargarPagosMes()
+
+  if (mesResumen.value && !mesResumen.value.mes_cerrado && excedeSaldo.value) {
+    alert(`Saldo insuficiente. Disponible: ${formatCLP(disponibleActual.value)}`)
+    return
+  }
+
+  try {
+    await deudasService.pagar(deudaSeleccionada.value.id, mesSeleccionado.value, parseFloat(montoPago.value))
+    mostrarModalPago.value = false
+    montoPago.value = ''
+    await cargarDeudas()
+    await cargarPagosMes()
+  } catch (error) {
+    const detalle = error.response?.data?.detail || 'No se pudo registrar el pago.'
+    alert(detalle)
+  }
 }
 
 const desactivar = async (id) => {
@@ -276,6 +299,7 @@ onMounted(async () => {
 .debt-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
 .debt-nombre { font-size: 14px; font-weight: 600; color: var(--text-primary); }
 .debt-cuota { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
+.debt-right { display: flex; gap: 12px; align-items: center; }
 .debt-actions { display: flex; gap: 8px; align-items: center; }
 .btn-pagar { padding: 6px 12px; background: #E6F1FB; color: #185FA5; border: none; border-radius: 6px; font-size: 12px; cursor: pointer; font-weight: 500; }
 .btn-pagar:hover { background: #B5D4F4; }

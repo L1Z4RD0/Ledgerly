@@ -52,6 +52,7 @@
               <div class="form-group">
                 <label>Monto (CLP)</label>
                 <input v-model="nuevoMonto" type="number" class="input" placeholder="Ej: 15000" />
+                <div class="aviso" v-if="mesResumen && !mesResumen.mes_cerrado && parseFloat(nuevoMonto) > ((mesResumen.saldo_disponible !== null && mesResumen.saldo_disponible !== undefined) ? mesResumen.saldo_disponible : (mesResumen.saldo_libre || 0))">⚠️ No hay saldo disponible suficiente para este gasto.</div>
               </div>
               <div class="form-group">
                 <label>Fecha</label>
@@ -87,6 +88,7 @@ import { mesesService, gastosService } from '../services/api'
 const meses = ref([])
 const mesSeleccionado = ref(null)
 const gastos = ref([])
+const mesResumen = ref(null)
 const nuevoNombre = ref('')
 const nuevaCategoria = ref('Alimentación')
 const nuevoMonto = ref('')
@@ -149,13 +151,39 @@ const cargarGastos = async () => {
   if (!mesSeleccionado.value) return
   const res = await gastosService.get(mesSeleccionado.value)
   gastos.value = res.data
+  await cargarResumenMes()
+}
+
+const cargarResumenMes = async () => {
+  if (!mesSeleccionado.value) return
+  try {
+    const res = await mesesService.getResumen(mesSeleccionado.value)
+    mesResumen.value = res.data
+  } catch {
+    mesResumen.value = null
+  }
 }
 
 const agregarGasto = async () => {
   if (!nuevoNombre.value || !nuevoMonto.value) return
-  await gastosService.crear(mesSeleccionado.value, nuevoNombre.value, nuevaCategoria.value, nuevoMonto.value, nuevaFecha.value)
-  nuevoNombre.value = ''; nuevoMonto.value = ''
-  await cargarGastos()
+
+  const monto = parseFloat(nuevoMonto.value)
+  const disponible = mesResumen.value ? (mesResumen.value.saldo_disponible !== null && mesResumen.value.saldo_disponible !== undefined ? mesResumen.value.saldo_disponible : mesResumen.value.saldo_libre || 0) : 0
+
+  if (mesResumen.value && !mesResumen.value.mes_cerrado && monto > disponible) {
+    alert(`Saldo insuficiente. Disponible: ${formatCLP(disponible)}`)
+    return
+  }
+
+  try {
+    await gastosService.crear(mesSeleccionado.value, nuevoNombre.value, nuevaCategoria.value, monto, nuevaFecha.value)
+    nuevoNombre.value = ''
+    nuevoMonto.value = ''
+    await cargarGastos()
+  } catch (error) {
+    const detalle = error.response?.data?.detail || 'No se pudo registrar el gasto.'
+    alert(detalle)
+  }
 }
 
 const eliminarGasto = async (id) => {

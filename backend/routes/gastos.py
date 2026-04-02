@@ -1,8 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from database import get_db
-from models import Gasto, Mes
-from models import Gasto, Mes, IngresoExtra, PagoDeuda
+from models import Gasto, Mes, IngresoExtra, PagoDeuda, AporteAhorro
 
 router = APIRouter()
 
@@ -27,12 +26,15 @@ def crear_gasto(mes_id: int, nombre: str, categoria: str, monto: float, fecha: s
     pagos = db.query(PagoDeuda).filter(PagoDeuda.mes_id == mes_id).all()
     total_pagos = sum(p.monto for p in pagos)
 
-    saldo_disponible = saldo_anterior + total_extras - total_gastos - total_pagos
+    aportes = db.query(AporteAhorro).filter(AporteAhorro.mes_id == mes_id).all()
+    total_aportes = sum(a.monto for a in aportes)
 
-    if saldo_disponible <= 0 and not mes.sueldo_real:
+    saldo_disponible = saldo_anterior + total_extras - total_gastos - total_pagos - total_aportes
+
+    if saldo_disponible <= 0:
         raise HTTPException(status_code=400, detail="Sin saldo disponible. Agrega un ingreso extra primero.")
 
-    if monto > saldo_disponible and not mes.sueldo_real:
+    if monto > saldo_disponible:
         raise HTTPException(status_code=400, detail=f"Saldo insuficiente. Disponible: {saldo_disponible}")
 
     nuevo = Gasto(mes_id=mes_id, nombre=nombre, categoria=categoria, monto=monto, fecha=fecha)

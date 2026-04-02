@@ -47,16 +47,16 @@
                 {{ a.tipo === 'fijo' ? 'Cuota: ' + formatCLP(a.cuota) + '/mes' : 'Cuota: ' + a.cuota + '% del sueldo' }}
               </div>
             </div>
-            <div class="savings-actions">
-              <button @click="abrirAporte(a)" class="btn-aportar">Aportar</button>
-              <button v-if="!a.monto_meta" @click="abrirRetiro(a)" class="btn-retirar">Retirar</button>
-              <button @click="desactivar(a.id)" class="btn-delete">×</button>
+            <div class="savings-right">
+              <div class="savings-actions">
+                <button @click="abrirAporte(a)" class="btn-aportar">Aportar</button>
+                <button v-if="!a.monto_meta" @click="abrirRetiro(a)" class="btn-retirar">Retirar</button>
+                <button @click="desactivar(a.id)" class="btn-delete">×</button>
+              </div>
+              <ProgressCircle v-if="a.monto_meta" :percentage="pctAhorrado(a)" type="ahorros" />
             </div>
           </div>
           <template v-if="a.monto_meta">
-            <div class="progress-bar">
-              <div class="progress-fill" :style="{ width: pctAhorrado(a) + '%' }"></div>
-            </div>
             <div class="savings-footer">
               <span>{{ formatCLP(a.monto_actual) }} ahorrado</span>
               <span>{{ formatCLP(a.monto_meta - a.monto_actual) }} para alcanzar meta</span>
@@ -96,9 +96,7 @@
               <div class="savings-cuota">{{ formatCLP(a.monto_meta) }} — meta completada</div>
             </div>
             <span class="badge-ok">Completo</span>
-          </div>
-          <div class="progress-bar">
-            <div class="progress-fill" style="width:100%;background:#1D9E75"></div>
+            <ProgressCircle :percentage="100" type="ahorros" />
           </div>
         </div>
       </div>
@@ -159,9 +157,10 @@
           <input v-model.number="montoAporte" type="number" class="input" />
         </div>
         <div class="aviso" v-if="!mesSeleccionado">Selecciona un mes primero</div>
+        <div class="aviso" v-if="excedeSaldoAporte">⚠️ No hay saldo disponible suficiente para este aporte. Disponible ahora: {{ formatCLP(disponibleActual) }}</div>
         <div class="modal-actions">
           <button @click="mostrarModalAporte = false" class="btn-secondary">Cancelar</button>
-          <button @click="registrarAporte" class="btn-primary" :disabled="!mesSeleccionado">Registrar</button>
+          <button @click="registrarAporte" class="btn-primary" :disabled="!mesSeleccionado || excedeSaldoAporte">Registrar</button>
         </div>
       </div>
     </div>
@@ -193,6 +192,7 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import { mesesService, ahorrosService } from '../services/api'
+import ProgressCircle from '../components/ProgressCircle.vue'
 
 const meses = ref([])
 const mesSeleccionado = ref(null)
@@ -223,6 +223,18 @@ const ahorrosInactivos = computed(() => ahorros.value.filter(a => !a.activo))
 const totalAportadoMes = computed(() => aportesMes.value.reduce((acc, a) => acc + a.monto, 0))
 const totalMeta = computed(() => ahorrosActivos.value.filter(a => a.monto_meta).reduce((acc, a) => acc + a.monto_meta, 0))
 const totalAhorradoHistorico = computed(() => ahorros.value.reduce((acc, a) => acc + a.monto_actual, 0))
+
+const disponibleActual = computed(() => {
+  if (!mesResumen.value) return 0
+  return mesResumen.value.saldo_disponible !== null && mesResumen.value.saldo_disponible !== undefined
+    ? mesResumen.value.saldo_disponible
+    : (mesResumen.value.saldo_libre || 0)
+})
+
+const excedeSaldoAporte = computed(() => {
+  const aporte = parseFloat(montoAporte.value) || 0
+  return mesResumen.value && !mesResumen.value.mes_cerrado && aporte > disponibleActual.value
+})
 
 const cargarMeses = async () => {
   const res = await mesesService.getAll()
@@ -293,11 +305,22 @@ const abrirRetiro = (a) => {
 
 const registrarAporte = async () => {
   if (!montoAporte.value || !mesSeleccionado.value) return
-  await ahorrosService.aportar(ahorroSeleccionado.value.id, mesSeleccionado.value, parseFloat(montoAporte.value))
-  mostrarModalAporte.value = false
-  montoAporte.value = ''
-  await cargarAhorros()
-  await cargarAportesMes()
+
+  if (excedeSaldoAporte.value) {
+    alert(`Saldo insuficiente. Disponible: ${formatCLP(disponibleActual.value)}`)
+    return
+  }
+
+  try {
+    await ahorrosService.aportar(ahorroSeleccionado.value.id, mesSeleccionado.value, parseFloat(montoAporte.value))
+    mostrarModalAporte.value = false
+    montoAporte.value = ''
+    await cargarAhorros()
+    await cargarAportesMes()
+  } catch (error) {
+    const detalle = error.response?.data?.detail || 'No se pudo registrar el aporte.'
+    alert(detalle)
+  }
 }
 
 const registrarRetiro = async () => {
@@ -343,6 +366,7 @@ onMounted(async () => {
 .savings-nombre { font-size: 14px; font-weight: 600; color: var(--text-primary); }
 .savings-desc { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
 .savings-cuota { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
+.savings-right { display: flex; gap: 12px; align-items: center; }
 .savings-actions { display: flex; gap: 8px; align-items: center; }
 .btn-aportar { padding: 6px 12px; background: #E6F1FB; color: #185FA5; border: none; border-radius: 6px; font-size: 12px; cursor: pointer; font-weight: 500; }
 .btn-aportar:hover { background: #B5D4F4; }

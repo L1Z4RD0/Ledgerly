@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from database import get_db
-from models import Mes, Semana, Gasto, IngresoExtra, PagoDeuda
+from models import Mes, Semana, Gasto, IngresoExtra, PagoDeuda, AporteAhorro
 
 router = APIRouter()
 
@@ -33,8 +33,10 @@ def crear_mes(anio: int, mes: int, db: Session = Depends(get_db)):
         total_gastos = sum(g.monto for g in gastos)
         pagos = db.query(PagoDeuda).filter(PagoDeuda.mes_id == mes_anterior.id).all()
         total_pagos = sum(p.monto for p in pagos)
+        aportes = db.query(AporteAhorro).filter(AporteAhorro.mes_id == mes_anterior.id).all()
+        total_aportes = sum(a.monto for a in aportes)
         saldo_anterior_anterior = mes_anterior.saldo_anterior or 0
-        saldo_inicial = mes_anterior.sueldo_real + saldo_anterior_anterior + total_extras - total_gastos - total_pagos
+        saldo_inicial = mes_anterior.sueldo_real + saldo_anterior_anterior + total_extras - total_gastos - total_pagos - total_aportes
 
     nuevo = Mes(anio=anio, mes=mes, saldo_anterior=saldo_inicial)
     db.add(nuevo)
@@ -63,12 +65,15 @@ def get_resumen(mes_id: int, db: Session = Depends(get_db)):
     pagos = db.query(PagoDeuda).filter(PagoDeuda.mes_id == mes_id).all()
     total_pagos_deuda = sum(p.monto for p in pagos)
 
+    aportes = db.query(AporteAhorro).filter(AporteAhorro.mes_id == mes_id).all()
+    total_aportes = sum(a.monto for a in aportes)
+
     saldo_anterior = mes.saldo_anterior or 0
     mes_cerrado = mes.sueldo_real is not None
 
     # Saldo disponible real = lo que hay en el bolsillo ahora
-    # Durante el mes = saldo anterior + extras − gastos − pagos deuda
-    saldo_disponible = saldo_anterior + total_extras - total_gastos - total_pagos_deuda
+    # Durante el mes = saldo anterior + extras − gastos − pagos deuda − aportes
+    saldo_disponible = saldo_anterior + total_extras - total_gastos - total_pagos_deuda - total_aportes
 
     if mes_cerrado:
         # Al cerrar el mes se suma el liquido recibido
@@ -110,8 +115,11 @@ def cerrar_mes(mes_id: int, liquido: float, bruto_real: float = None, db: Sessio
     pagos = db.query(PagoDeuda).filter(PagoDeuda.mes_id == mes_id).all()
     total_pagos_deuda = sum(p.monto for p in pagos)
 
+    aportes = db.query(AporteAhorro).filter(AporteAhorro.mes_id == mes_id).all()
+    total_aportes = sum(a.monto for a in aportes)
+
     saldo_anterior = mes.saldo_anterior or 0
-    saldo_libre = liquido + saldo_anterior + total_extras - total_gastos - total_pagos_deuda
+    saldo_libre = liquido + saldo_anterior + total_extras - total_gastos - total_pagos_deuda - total_aportes
 
     mes.sueldo_real = liquido
     if bruto_real:

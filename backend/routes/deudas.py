@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from database import get_db
-from models import Deuda, PagoDeuda, Mes
+from models import Deuda, PagoDeuda, Mes, IngresoExtra, Gasto, AporteAhorro
 import datetime
 
 router = APIRouter()
@@ -45,6 +45,27 @@ def registrar_pago(deuda_id: int, mes_id: int, monto: float, db: Session = Depen
     mes = db.query(Mes).filter(Mes.id == mes_id).first()
     if not mes:
         raise HTTPException(status_code=404, detail="Mes no encontrado")
+
+    if monto <= 0:
+        raise HTTPException(status_code=400, detail="El monto debe ser mayor a 0")
+
+    saldo_anterior = mes.saldo_anterior or 0
+    extras = db.query(IngresoExtra).filter(IngresoExtra.mes_id == mes_id).all()
+    total_extras = sum(e.monto for e in extras)
+    gastos = db.query(Gasto).filter(Gasto.mes_id == mes_id).all()
+    total_gastos = sum(g.monto for g in gastos)
+    pagos = db.query(PagoDeuda).filter(PagoDeuda.mes_id == mes_id).all()
+    total_pagos = sum(p.monto for p in pagos)
+    aportes = db.query(AporteAhorro).filter(AporteAhorro.mes_id == mes_id).all()
+    total_aportes = sum(a.monto for a in aportes)
+
+    saldo_disponible = saldo_anterior + total_extras - total_gastos - total_pagos - total_aportes
+
+    if saldo_disponible <= 0:
+        raise HTTPException(status_code=400, detail="Sin saldo disponible. Agrega un ingreso extra primero.")
+    if monto > saldo_disponible:
+        raise HTTPException(status_code=400, detail=f"Saldo insuficiente. Disponible: {saldo_disponible}")
+
     pago = PagoDeuda(
         mes_id=mes_id,
         deuda_id=deuda_id,
