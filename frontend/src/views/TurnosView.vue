@@ -156,7 +156,8 @@ onMounted(cargarMeses)
 .topbar { padding: 16px 24px; background: #fff; border-bottom: 1px solid #e5e5e3; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
 .topbar-title { font-size: 16px; font-weight: 600; }
 .topbar-sub { font-size: 12px; color: #888; margin-top: 2px; }
-.select-mes { padding: 6px 10px; border: 1px solid #e5e5e3; border-radius: 8px; font-size: 13px; background: #fff; }
+.select-mes { width: 100%; padding: 12px 14px; border: 1px solid var(--border); border-radius: 14px; font-size: 14px; background: var(--bg-card); color: var(--text-primary); transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease; appearance: none; background-image: linear-gradient(45deg, transparent 50%, var(--text-secondary) 50%), linear-gradient(135deg, var(--text-secondary) 50%, transparent 50%); background-position: calc(100% - 18px) center, calc(100% - 14px) center; background-size: 8px 8px; background-repeat: no-repeat; }
+.select-mes:focus { border-color: var(--accent); box-shadow: 0 0 0 5px rgba(24, 95, 165, 0.12); outline: none; }
 .page-content { padding: 20px 24px; display: flex; flex-direction: column; gap: 16px; }
 .metrics-row { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 12px; }
 .metric-card { background: #efefed; border-radius: 10px; padding: 14px; }
@@ -177,7 +178,8 @@ onMounted(cargarMeses)
 .form-row { display: flex; gap: 12px; flex-wrap: wrap; }
 .form-group { flex: 1; min-width: 120px; }
 .form-group label { font-size: 12px; color: #888; display: block; margin-bottom: 4px; }
-.input { width: 100%; padding: 8px 12px; border: 1px solid #e5e5e3; border-radius: 8px; font-size: 13px; }
+.input { width: 100%; padding: 12px 14px; border: 1px solid var(--border); border-radius: 14px; font-size: 14px; background: var(--bg-card); color: var(--text-primary); transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease; }
+.input:focus { border-color: var(--accent); box-shadow: 0 0 0 5px rgba(24, 95, 165, 0.12); outline: none; }
 .btn-primary { padding: 8px 16px; background: #185FA5; color: #fff; border: none; border-radius: 8px; font-size: 13px; cursor: pointer; white-space: nowrap; }
 .btn-primary:hover { background: #0C447C; }
 .breakdown-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f0f0ee; font-size: 13px; }

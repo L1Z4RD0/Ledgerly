@@ -100,7 +100,7 @@
         </div>
         <div class="form-group">
           <label>Monto total</label>
-          <input v-model="nuevoMontoTotal" type="number" class="input" placeholder="Ej: 600000" />
+          <input v-model="nuevoMontoTotal" type="number" class="input" placeholder="Ej: 600000" min="0" @keypress="$event.key.toLowerCase() === 'e' && $event.preventDefault()" />
         </div>
         <div class="form-group">
           <label>Tipo de cuota</label>
@@ -111,7 +111,7 @@
         </div>
         <div class="form-group">
           <label>{{ nuevoTipo === 'fijo' ? 'Cuota sugerida (CLP)' : 'Porcentaje (%)' }}</label>
-          <input v-model="nuevaCuota" type="number" class="input" :placeholder="nuevoTipo === 'fijo' ? 'Ej: 60000' : 'Ej: 5'" />
+          <input v-model="nuevaCuota" type="number" class="input" :placeholder="nuevoTipo === 'fijo' ? 'Ej: 60000' : 'Ej: 5'" min="0" @keypress="$event.key.toLowerCase() === 'e' && $event.preventDefault()" />
         </div>
         <div class="modal-actions">
           <button @click="mostrarModal = false" class="btn-secondary">Cancelar</button>
@@ -133,7 +133,7 @@
         </div>
         <div class="form-group">
           <label>Monto a pagar (CLP)</label>
-          <input v-model.number="montoPago" type="number" class="input" />
+          <input v-model.number="montoPago" type="number" class="input" min="0" @keypress="$event.key.toLowerCase() === 'e' && $event.preventDefault()" />
         </div>
         <div class="aviso" v-if="mesSeleccionado && excedeSaldo">⚠️ No hay saldo disponible suficiente. Disponible ahora: {{ formatCLP(disponibleActual) }}</div>
         <div class="aviso" v-if="!mesSeleccionado">Selecciona un mes primero</div>
@@ -225,7 +225,7 @@ const calcularMontoPago = (deuda) => {
     return deuda.cuota
   } else if (deuda.tipo === 'porcentaje' && mesResumen.value) {
     const disponible = mesResumen.value.saldo_disponible || mesResumen.value.saldo_libre || 0
-    return (deuda.cuota / 100) * disponible
+    return Math.round((deuda.cuota / 100) * disponible)
   }
   return deuda.cuota
 }
@@ -322,7 +322,8 @@ onMounted(async () => {
 .btn-secondary { padding: 8px 16px; background: var(--bg-card); color: var(--text-primary); border: 1px solid var(--border); border-radius: 8px; font-size: 13px; cursor: pointer; }
 .form-group { margin-bottom: 12px; }
 .form-group label { font-size: 12px; color: var(--text-secondary); display: block; margin-bottom: 4px; }
-.input { width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 13px; background: var(--bg-card); color: var(--text-primary); }
+.input { width: 100%; padding: 12px 14px; border: 1px solid var(--border); border-radius: 14px; font-size: 14px; background: var(--bg-card); color: var(--text-primary); transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease; }
+.input:focus { border-color: var(--accent); box-shadow: 0 0 0 5px rgba(24, 95, 165, 0.12); outline: none; }
 .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; z-index: 200; }
 .modal { background: var(--bg-card); border-radius: 14px; padding: 24px; width: 340px; }
 .modal-title { font-size: 15px; font-weight: 600; margin-bottom: 16px; color: var(--text-primary); }

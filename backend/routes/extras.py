@@ -11,6 +11,9 @@ def get_extras(mes_id: int, db: Session = Depends(get_db)):
 
 @router.post("/{mes_id}")
 def crear_extra(mes_id: int, descripcion: str, monto: float, fecha: str, db: Session = Depends(get_db)):
+    if monto <= 0:
+        raise HTTPException(status_code=400, detail="El monto debe ser positivo")
+    
     mes = db.query(Mes).filter(Mes.id == mes_id).first()
     if not mes:
         raise HTTPException(status_code=404, detail="Mes no encontrado")

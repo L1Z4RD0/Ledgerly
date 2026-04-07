@@ -22,8 +22,8 @@
           <div class="metric-val red">{{ formatCLP(promedioGastos) }}</div>
         </div>
         <div class="metric-card">
-          <div class="metric-label">Tasa de Ahorro Promedio</div>
-          <div class="metric-val green">{{ saveRate }}%</div>
+          <div class="metric-label">Saldo libre promedio</div>
+          <div class="metric-val green">{{ formatCLP(promedioSaldoLibre) }}</div>
         </div>
       </div>
 
@@ -35,21 +35,58 @@
         </div>
 
         <div class="card">
-          <div class="card-title">Distribución de Gastos</div>
-          <div v-if="Object.keys(gastosCatTotal).length === 0" class="empty-state">Sin gastos registrados</div>
-          <apexchart v-else type="donut" height="280" :options="donutOptions" :series="donutSeries"></apexchart>
-        </div>
-
-        <div class="card">
-          <div class="card-title">Comparativa: Ingreso vs Saldo Libre</div>
+          <div class="card-title">Tasa de Ahorro Mensual</div>
           <div v-if="resumenes.length === 0" class="empty-state">Esperando datos...</div>
           <apexchart v-else type="bar" height="280" :options="compareOptions" :series="compareSeries"></apexchart>
         </div>
+      </div>
+
+      <div class="two-col">
+        <div class="card">
+          <div class="card-title">Indicadores económicos</div>
+          <div v-if="indicadoresError" class="empty-state">No se pudieron cargar los indicadores económicos</div>
+          <div v-else-if="!indicadoresCargados" class="empty-state">Cargando indicadores...</div>
+          <div v-else class="indicator-grid">
+            <div class="indicator-item">
+              <div class="indicator-label">UF</div>
+              <div class="indicator-val">{{ formatIndicatorValue(indicadores.uf.serie[0].valor) }}</div>
+              <div class="indicator-sub">Último: {{ indicadores.uf.serie[0].fecha }}</div>
+            </div>
+            <div class="indicator-item">
+              <div class="indicator-label">Dólar observado</div>
+              <div class="indicator-val">{{ formatIndicatorValue(indicadores.dolar.serie[0].valor) }}</div>
+              <div class="indicator-sub">Último: {{ indicadores.dolar.serie[0].fecha }}</div>
+            </div>
+            <div class="indicator-item">
+              <div class="indicator-label">Euro</div>
+              <div class="indicator-val">{{ formatIndicatorValue(indicadores.euro.serie[0].valor) }}</div>
+              <div class="indicator-sub">Último: {{ indicadores.euro.serie[0].fecha }}</div>
+            </div>
+            <div class="indicator-item">
+              <div class="indicator-label">UTM</div>
+              <div class="indicator-val">{{ formatIndicatorValue(indicadores.utm.serie[0].valor) }}</div>
+              <div class="indicator-sub">Último: {{ indicadores.utm.serie[0].fecha }}</div>
+            </div>
+            <div class="indicator-item">
+              <div class="indicator-label">Yen</div>
+              <div class="indicator-val">{{ formatIndicatorValue(indicadores.yen.serie[0].valor) }}</div>
+              <div class="indicator-sub">Último: {{ indicadores.yen.serie[0].fecha }}</div>
+            </div>
+            <div class="indicator-item">
+              <div class="indicator-label">Bitcoin</div>
+              <div class="indicator-val">{{ formatIndicatorValue(indicadores.bitcoin.serie[0].valor, 'US$ ') }}</div>
+              <div class="indicator-sub">Último: {{ indicadores.bitcoin.serie[0].fecha }}</div>
+            </div>
+          </div>
+        </div>
 
         <div class="card">
-          <div class="card-title">Eficiencia de Ahorro (KPI)</div>
-          <div v-if="resumenesCerrados.length === 0" class="empty-state">Cierra un mes para ver tu eficiencia</div>
-          <apexchart v-else type="radialBar" height="280" :options="saveOptions" :series="[saveRate]"></apexchart>
+          <div class="card-title">Evolución de indicadores económicos</div>
+          <div v-if="indicadoresError" class="empty-state">No se pudieron cargar los indicadores económicos</div>
+          <div v-else-if="!indicadoresCargados" class="empty-state">Cargando indicadores...</div>
+          <div v-else>
+            <apexchart type="line" height="280" :options="indicatorOptions" :series="indicatorSeries"></apexchart>
+          </div>
         </div>
       </div>
 
@@ -81,18 +118,27 @@
 
 <script setup>
 import { ref, onMounted, computed } from 'vue'
-import { mesesService, gastosService, ahorrosService } from '../services/api'
+import { mesesService, gastosService, ahorrosService, findicService } from '../services/api'
 
 // --- ESTADO ---
 const meses = ref([])
 const resumenes = ref([])
 const gastosCatTotal = ref({})
 const ahorros = ref([])
+const indicadores = ref({ uf: null, dolar: null, euro: null, utm: null, yen: null, bitcoin: null })
+const indicadoresError = ref(false)
 
 // --- UTILIDADES ---
 const nombresMeses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
 const nombreMes = (n) => nombresMeses[n - 1]
 const formatCLP = (n) => '$' + Math.round(n || 0).toLocaleString('es-CL')
+const formatIndicatorValue = (n, symbol = '$') => {
+  const value = Number(n || 0)
+  return symbol + value.toLocaleString('es-CL', {
+    minimumFractionDigits: value % 1 === 0 ? 0 : 2,
+    maximumFractionDigits: 2
+  })
+}
 
 const resumenesCerrados = computed(() => resumenes.value.filter(r => r.sueldo_real))
 
@@ -110,6 +156,64 @@ const mejorMes = computed(() => {
 const promedioGastos = computed(() => {
   return resumenes.value.length ? resumenes.value.reduce((acc, r) => acc + (r.total_gastos || 0), 0) / resumenes.value.length : 0
 })
+
+const promedioSaldoLibre = computed(() => {
+  const cerrados = resumenesCerrados.value
+  return cerrados.length
+    ? Math.round(cerrados.reduce((acc, r) => acc + (r.saldo_libre || 0), 0) / cerrados.length)
+    : 0
+})
+
+const indicadoresCargados = computed(() => !!(indicadores.value.uf && indicadores.value.dolar && indicadores.value.euro && indicadores.value.utm && indicadores.value.yen && indicadores.value.bitcoin))
+
+const buildIndicatorSeries = (indicator, maxPoints = 12) => {
+  if (!indicator?.serie?.length) return []
+  return indicator.serie.slice(-maxPoints).map(item => ({ x: item.fecha, y: item.valor }))
+}
+
+const indicatorSeries = computed(() => {
+  if (!indicadoresCargados.value) return []
+  return [
+    { name: 'Dólar', data: buildIndicatorSeries(indicadores.value.dolar) },
+    { name: 'Euro', data: buildIndicatorSeries(indicadores.value.euro) },
+    { name: 'Yen', data: buildIndicatorSeries(indicadores.value.yen) }
+  ]
+})
+
+const indicatorOptions = computed(() => ({
+  chart: { toolbar: { show: false }, zoom: { enabled: false }, fontFamily: 'inherit' },
+  stroke: { curve: 'smooth', width: 2 },
+  markers: { size: 3 },
+  xaxis: { type: 'datetime', labels: { style: { colors: '#888' } } },
+  yaxis: { labels: { style: { colors: '#888' } } },
+  legend: { position: 'bottom', labels: { colors: '#888' } },
+  tooltip: { theme: 'dark', x: { format: 'dd MMM' } },
+  grid: { borderColor: '#f0f0ee' },
+  colors: ['#185FA5', '#1D9E75', '#993C1D', '#F59E0B', '#6366F1', '#111827']
+}))
+
+const cargarIndicadores = async () => {
+  try {
+    const [ufRes, dolarRes, euroRes, utmRes, yenRes, bitcoinRes] = await Promise.all([
+      findicService.getUf(),
+      findicService.getDolar(),
+      findicService.getEuro(),
+      findicService.getUtm(),
+      findicService.getYen(),
+      findicService.getBitcoin()
+    ])
+    indicadores.value = {
+      uf: ufRes.data,
+      dolar: dolarRes.data,
+      euro: euroRes.data,
+      utm: utmRes.data,
+      yen: yenRes.data,
+      bitcoin: bitcoinRes.data
+    }
+  } catch (error) {
+    indicadoresError.value = true
+  }
+}
 
 // --- 1. CONFIG AREA CHART (TENDENCIAS) ---
 const chartSeries = computed(() => [
@@ -141,21 +245,22 @@ const donutOptions = computed(() => ({
   tooltip: { theme: 'dark' }
 }))
 
-// --- 3. CONFIG GROUPED BAR CHART (COMPARATIVA INGRESO VS AHORRO) ---
+// --- 3. CONFIG BAR CHART (TASA DE AHORRO MENUSAL) ---
 const compareSeries = computed(() => [
   {
-    name: 'Ingreso Total',
-    data: resumenes.value.map(r => (r.sueldo_real || r.neto_estimado || 0) + (r.total_extras || 0))
-  },
-  {
-    name: 'Saldo Libre (Ahorro)',
-    data: resumenes.value.map(r => r.saldo_libre || 0)
+    name: 'Tasa de ahorro',
+    data: resumenes.value.map(r => {
+      const ingresoTotal = (r.sueldo_real || r.neto_estimado || 0) + (r.total_extras || 0)
+      return ingresoTotal > 0 && r.saldo_libre !== null && r.saldo_libre !== undefined
+        ? Math.round((r.saldo_libre / ingresoTotal) * 100)
+        : 0
+    })
   }
 ])
 
 const compareOptions = computed(() => ({
   chart: { type: 'bar', fontFamily: 'inherit', toolbar: { show: false } },
-  colors: ['#185FA5', '#0F6E56'], // Azul para ingreso, Verde para ahorro
+  colors: ['#0F6E56'],
   plotOptions: {
     bar: {
       horizontal: false,
@@ -169,20 +274,23 @@ const compareOptions = computed(() => ({
     categories: resumenes.value.map(r => nombreMes(r.mes)),
     labels: { style: { colors: '#888' } }
   },
-  yaxis: { labels: { formatter: (v) => formatCLP(v), style: { colors: '#888' } } },
+  yaxis: { labels: { formatter: (v) => `${Math.round(v)}%`, style: { colors: '#888' } }, max: 100 },
   fill: { opacity: 1 },
-  tooltip: { theme: 'dark', y: { formatter: (v) => formatCLP(v) } },
+  tooltip: { theme: 'dark', y: { formatter: (v) => `${Math.round(v)}%` } },
   grid: { borderColor: '#f0f0ee' }
 }))
 
 // --- 4. CONFIG RADIAL BAR (TASA DE AHORRO) ---
 const saveRate = computed(() => {
   const cerrados = resumenesCerrados.value
-  const ingresos = cerrados.reduce((acc, r) => acc + (r.sueldo_real + r.total_extras), 0)
-  const ahorroMeses = cerrados.reduce((acc, r) => acc + (r.saldo_libre || 0), 0)
-  const ahorroModulo = ahorros.value.reduce((acc, a) => acc + a.monto_actual, 0)
-  const totalAhorro = ahorroMeses + ahorroModulo
-  return ingresos > 0 ? Math.round((totalAhorro / ingresos) * 100) : 0
+  if (!cerrados.length) return 0
+  const ratios = cerrados.map(r => {
+    const ingresoTotal = (r.sueldo_real || 0) + (r.total_extras || 0)
+    return ingresoTotal > 0 && r.saldo_libre !== null && r.saldo_libre !== undefined
+      ? (r.saldo_libre / ingresoTotal) * 100
+      : 0
+  })
+  return Math.round(ratios.reduce((acc, current) => acc + current, 0) / ratios.length)
 })
 
 const saveOptions = {
@@ -226,7 +334,10 @@ const cargarDatos = async () => {
   gastosCatTotal.value = catAcum
 }
 
-onMounted(cargarDatos)
+onMounted(() => {
+  cargarDatos()
+  cargarIndicadores()
+})
 </script>
 
 <style scoped>
@@ -247,6 +358,11 @@ onMounted(cargarDatos)
 .red { color: #993C1D; }
 .blue { color: #185FA5; }
 .font-bold { font-weight: 600; }
+.indicator-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.indicator-item { background: #f8faf7; border-radius: 14px; padding: 18px; display: flex; flex-direction: column; gap: 8px; }
+.indicator-label { font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 0.6px; }
+.indicator-val { font-size: 24px; font-weight: 700; color: #111; }
+.indicator-sub { font-size: 12px; color: #666; }
 .empty-state { font-size: 13px; color: #aaa; text-align: center; padding: 40px 0; }
 .table-container { overflow-x: auto; }
 .tabla-header { display: grid; grid-template-columns: 1.2fr 1fr 1fr 1fr 1fr 1fr; gap: 10px; font-size: 11px; color: #aaa; text-transform: uppercase; padding-bottom: 10px; border-bottom: 1px solid #eee; }

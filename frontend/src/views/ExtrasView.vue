@@ -41,7 +41,7 @@
           </div>
           <div class="form-group">
             <label>Monto (CLP)</label>
-            <input v-model="nuevoMonto" type="number" class="input" placeholder="Ej: 30000" />
+            <input v-model="nuevoMonto" type="number" class="input" placeholder="Ej: 30000" min="0" @keypress="$event.key.toLowerCase() === 'e' && $event.preventDefault()" />
           </div>
           <div class="form-group">
             <label>Fecha</label>

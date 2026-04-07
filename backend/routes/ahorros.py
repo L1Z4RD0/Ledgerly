@@ -20,6 +20,10 @@ def crear_ahorro(nombre: str, descripcion: str, monto_meta: float = None, cuota:
         raise HTTPException(status_code=400, detail="Tipo debe ser 'fijo' o 'porcentaje'")
     if monto_meta is None and cuota is None:
         raise HTTPException(status_code=400, detail="Debe proporcionar al menos 'monto_meta' o 'cuota'")
+    if monto_meta is not None and monto_meta <= 0:
+        raise HTTPException(status_code=400, detail="La meta debe ser positiva")
+    if cuota is not None and cuota <= 0:
+        raise HTTPException(status_code=400, detail="La cuota debe ser positiva")
     fecha_inicio = str(datetime.date.today())
     nuevo = Ahorro(nombre=nombre, descripcion=descripcion, monto_meta=monto_meta if monto_meta and monto_meta > 0 else None, cuota=cuota or 0, tipo=tipo, fecha_inicio=fecha_inicio)
     db.add(nuevo)
@@ -43,6 +47,9 @@ def actualizar_ahorro(ahorro_id: int, nombre: str, descripcion: str, monto_meta:
 
 @router.post("/{ahorro_id}/aportar")
 def registrar_aporte(ahorro_id: int, mes_id: int, monto: float, db: Session = Depends(get_db)):
+    if monto <= 0:
+        raise HTTPException(status_code=400, detail="El monto a aportar debe ser positivo")
+    
     ahorro = db.query(Ahorro).filter(Ahorro.id == ahorro_id).first()
     if not ahorro:
         raise HTTPException(status_code=404, detail="Ahorro no encontrado")

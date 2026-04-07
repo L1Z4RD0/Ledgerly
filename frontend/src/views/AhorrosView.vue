@@ -121,7 +121,7 @@
         </div>
         <div v-if="tieneMetaOptional" class="form-group">
           <label>Meta (CLP)</label>
-          <input v-model="nuevoMontoMeta" type="number" class="input" placeholder="Ej: 500000" />
+          <input v-model="nuevoMontoMeta" type="number" class="input" placeholder="Ej: 500000" min="0" @keypress="$event.key.toLowerCase() === 'e' && $event.preventDefault()" />
         </div>
         <div class="form-group">
           <label>Tipo de aporte</label>
@@ -132,7 +132,7 @@
         </div>
         <div class="form-group">
           <label>{{ nuevoTipo === 'fijo' ? 'Aporte sugerido (CLP)' : 'Porcentaje (%)' }}</label>
-          <input v-model="nuevaCuota" type="number" class="input" :placeholder="nuevoTipo === 'fijo' ? 'Ej: 50000' : 'Ej: 5'" />
+          <input v-model="nuevaCuota" type="number" class="input" :placeholder="nuevoTipo === 'fijo' ? 'Ej: 50000' : 'Ej: 5'" min="0" @keypress="$event.key.toLowerCase() === 'e' && $event.preventDefault()" />
         </div>
         <div class="modal-actions">
           <button @click="mostrarModal = false" class="btn-secondary">Cancelar</button>
@@ -154,7 +154,7 @@
         </div>
         <div class="form-group">
           <label>Monto a aportar (CLP)</label>
-          <input v-model.number="montoAporte" type="number" class="input" />
+          <input v-model.number="montoAporte" type="number" class="input" min="0" @keypress="$event.key.toLowerCase() === 'e' && $event.preventDefault()" />
         </div>
         <div class="aviso" v-if="!mesSeleccionado">Selecciona un mes primero</div>
         <div class="aviso" v-if="excedeSaldoAporte">⚠️ No hay saldo disponible suficiente para este aporte. Disponible ahora: {{ formatCLP(disponibleActual) }}</div>
@@ -174,7 +174,7 @@
         </div>
         <div class="form-group">
           <label>Monto a retirar (CLP)</label>
-          <input v-model.number="montoRetiro" type="number" class="input" placeholder="Monto a retirar" />
+          <input v-model.number="montoRetiro" type="number" class="input" placeholder="Monto a retirar" min="0" @keypress="$event.key.toLowerCase() === 'e' && $event.preventDefault()" />
         </div>
         <div v-if="montoRetiro > ahorroSeleccionado?.monto_actual" class="aviso">
           ⚠️ El monto excede el saldo disponible
@@ -272,7 +272,7 @@ const calcularMontoAporte = (ahorro) => {
     return ahorro.cuota
   } else if (ahorro.tipo === 'porcentaje' && mesResumen.value) {
     const disponible = mesResumen.value.saldo_disponible || mesResumen.value.saldo_libre || 0
-    return (ahorro.cuota / 100) * disponible
+    return Math.round((ahorro.cuota / 100) * disponible)
   }
   return ahorro.cuota
 }

@@ -16,6 +16,10 @@ def get_deudas_activas(db: Session = Depends(get_db)):
 
 @router.post("/")
 def crear_deuda(nombre: str, monto_total: float, cuota: float, tipo: str = "fijo", db: Session = Depends(get_db)):
+    if monto_total <= 0:
+        raise HTTPException(status_code=400, detail="El monto total debe ser positivo")
+    if cuota <= 0:
+        raise HTTPException(status_code=400, detail="La cuota debe ser positiva")
     if tipo not in ["fijo", "porcentaje"]:
         raise HTTPException(status_code=400, detail="Tipo debe ser 'fijo' o 'porcentaje'")
     nueva = Deuda(nombre=nombre, monto_total=monto_total, cuota=cuota, tipo=tipo)

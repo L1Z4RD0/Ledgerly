@@ -73,3 +73,12 @@ export const ahorrosService = {
   desactivar: (ahorroId) => api.put(`/ahorros/${ahorroId}/desactivar`),
   eliminar: (ahorroId) => api.delete(`/ahorros/${ahorroId}`)
 }
+
+export const findicService = {
+  getUf: () => axios.get('https://findic.cl/api/uf'),
+  getDolar: () => axios.get('https://findic.cl/api/dolar'),
+  getEuro: () => axios.get('https://findic.cl/api/euro'),
+  getUtm: () => axios.get('https://findic.cl/api/utm'),
+  getYen: () => axios.get('https://findic.cl/api/yen'),
+  getBitcoin: () => axios.get('https://findic.cl/api/bitcoin')
+}
