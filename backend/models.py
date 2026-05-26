@@ -8,25 +8,14 @@ class Mes(Base):
     anio = Column(Integer, nullable=False)
     mes = Column(Integer, nullable=False)
     sueldo_real = Column(Float, nullable=True)
+    sueldo_estimado = Column(Float, nullable=False, default=0)
     saldo_anterior = Column(Float, nullable=True, default=0)
     notas = Column(String, nullable=True)
 
-    semanas = relationship("Semana", back_populates="mes", cascade="all, delete")
     gastos = relationship("Gasto", back_populates="mes", cascade="all, delete")
     ingresos_extra = relationship("IngresoExtra", back_populates="mes", cascade="all, delete")
     pagos_deuda = relationship("PagoDeuda", back_populates="mes", cascade="all, delete")
     aportes_ahorro = relationship("AporteAhorro", back_populates="mes", cascade="all, delete")
-
-
-class Semana(Base):
-    __tablename__ = "semanas"
-    id = Column(Integer, primary_key=True, index=True)
-    mes_id = Column(Integer, ForeignKey("meses.id"), nullable=False)
-    numero_semana = Column(Integer, nullable=False)
-    turnos = Column(Integer, nullable=False, default=0)
-    valor_turno = Column(Float, nullable=False, default=16000)
-
-    mes = relationship("Mes", back_populates="semanas")
 
 
 class Gasto(Base):

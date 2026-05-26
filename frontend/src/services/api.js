@@ -9,22 +9,11 @@ const api = axios.create({
 
 export const mesesService = {
   getAll: () => api.get('/meses/'),
-  crear: (anio, mes) => api.post(`/meses/?anio=${anio}&mes=${mes}`),
+  crear: (anio, mes, sueldoEstimado = 0, saldoInicial = 0) =>
+    api.post('/meses/', null, { params: { anio, mes, sueldo_estimado: sueldoEstimado, saldo_inicial: saldoInicial } }),
   getResumen: (mesId) => api.get(`/meses/${mesId}/resumen`),
-  cerrar: (mesId, liquido, brutoReal = null) => {
-    let url = `/meses/${mesId}/cerrar?liquido=${liquido}`
-    if (brutoReal) url += `&bruto_real=${brutoReal}`
-    return api.put(url)
-  }
-}
-
-export const turnosService = {
-  get: (mesId) => api.get(`/turnos/${mesId}`),
-  crear: (mesId, numeroSemana, turnos, valorTurno = 16000) =>
-    api.post(`/turnos/${mesId}?numero_semana=${numeroSemana}&turnos=${turnos}&valor_turno=${valorTurno}`),
-  actualizar: (semanaId, turnos, valorTurno = 16000) =>
-    api.put(`/turnos/${semanaId}?turnos=${turnos}&valor_turno=${valorTurno}`),
-  eliminar: (semanaId) => api.delete(`/turnos/${semanaId}`)
+  actualizarSueldoEstimado: (mesId, sueldoEstimado) => api.put(`/meses/${mesId}/sueldo_estimado?sueldo_estimado=${sueldoEstimado}`),
+  cerrar: (mesId, liquido) => api.put(`/meses/${mesId}/cerrar?liquido=${liquido}`)
 }
 
 export const gastosService = {

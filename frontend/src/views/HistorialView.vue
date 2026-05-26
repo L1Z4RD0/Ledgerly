@@ -33,7 +33,7 @@
         <div v-else>
           <div class="hist-header">
             <span>Mes</span>
-            <span>Bruto est.</span>
+            <span>Sueldo est.</span>
             <span>Líquido real</span>
             <span>Pagos deuda</span>
             <span>Extras</span>
@@ -43,7 +43,7 @@
           </div>
           <div v-for="r in resumenes" :key="r.mes_id" class="hist-row">
             <span class="mes-label">{{ nombreMes(r.mes) }} {{ r.anio }}</span>
-            <span>{{ formatCLP(r.bruto) }}</span>
+            <span>{{ formatCLP(r.sueldo_estimado) }}</span>
             <span>{{ r.sueldo_real ? formatCLP(r.sueldo_real) : '—' }}</span>
             <span class="red tooltip-container" @mouseenter="cargarDeudasPago(r.mes_id)" @mouseleave="limpiarTooltip()">
               {{ r.total_pagos_deuda > 0 ? '−' + formatCLP(r.total_pagos_deuda) : '—' }}
@@ -85,22 +85,22 @@
           <span v-else class="badge-pending">En curso</span>
         </div>
         <div class="hist-detail">
-          <div class="section-label">Estimación</div>
+          <div class="section-label">Sueldo y Presupuesto</div>
           <div class="detail-row">
-            <span class="lbl">Bruto estimado</span>
-            <span>{{ formatCLP(r.bruto) }}</span>
+            <span class="lbl">Sueldo estimado</span>
+            <span>{{ formatCLP(r.sueldo_estimado) }}</span>
           </div>
           <div class="detail-row">
-            <span class="lbl">AFP (10,46%)</span>
-            <span class="red">−{{ formatCLP(r.descuento_afp) }}</span>
+            <span class="lbl">Saldo anterior</span>
+            <span>{{ formatCLP(r.saldo_anterior) }}</span>
           </div>
-          <div class="detail-row">
-            <span class="lbl">Fonasa (7%)</span>
-            <span class="red">−{{ formatCLP(r.descuento_fonasa) }}</span>
+          <div class="detail-row" v-if="r.total_extras > 0">
+            <span class="lbl">Ingresos extra</span>
+            <span class="green">+{{ formatCLP(r.total_extras) }}</span>
           </div>
           <div class="detail-row total">
-            <span>Neto estimado</span>
-            <span class="blue">{{ formatCLP(r.neto_estimado) }}</span>
+            <span>Presupuesto total</span>
+            <span class="blue">{{ formatCLP((r.sueldo_estimado || 0) + (r.saldo_anterior || 0) + (r.total_extras || 0)) }}</span>
           </div>
 
           <template v-if="r.mes_cerrado">
@@ -147,10 +147,10 @@
               <span>Saldo libre final</span>
               <span class="green">{{ formatCLP(r.saldo_libre) }}</span>
             </div>
-            <div class="detail-row" v-if="r.diferencia_bruto !== null">
+            <div class="detail-row" v-if="r.diferencia_sueldo !== null">
               <span class="lbl">Diferencia estimado/real</span>
-              <span :class="r.diferencia_bruto >= 0 ? 'green' : 'red'">
-                {{ r.diferencia_bruto >= 0 ? '+' : '' }}{{ formatCLP(r.diferencia_bruto) }}
+              <span :class="r.diferencia_sueldo >= 0 ? 'green' : 'red'">
+                {{ r.diferencia_sueldo >= 0 ? '+' : '' }}{{ formatCLP(r.diferencia_sueldo) }}
               </span>
             </div>
           </template>

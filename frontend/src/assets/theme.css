@@ -20,7 +20,6 @@
 .modal-title { color: var(--text-primary) !important; }
 .form-group label { color: var(--text-secondary) !important; }
 .semana-row { border-color: var(--border-light) !important; }
-.semana-turnos { color: var(--text-secondary) !important; }
 .gasto-row { border-color: var(--border-light) !important; }
 .gasto-nombre { color: var(--text-primary) !important; }
 .gasto-cat { color: var(--text-muted) !important; }
@@ -44,5 +43,4 @@
 .extra-total { border-color: var(--border) !important; color: var(--text-primary) !important; }
 .diferencia-row { border-color: var(--border-light) !important; }
 .nav-section { color: var(--text-muted) !important; }
-.week-turns { color: var(--text-secondary) !important; }
 .page-content { background: var(--bg) !important; }

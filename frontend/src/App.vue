@@ -11,9 +11,6 @@
         <RouterLink to="/" class="nav-item" @click="cerrarMenu">
           <span class="nav-icon">◈</span> Inicio
         </RouterLink>
-        <RouterLink to="/turnos" class="nav-item" @click="cerrarMenu">
-          <span class="nav-icon">◷</span> Turnos
-        </RouterLink>
         <RouterLink to="/gastos" class="nav-item" @click="cerrarMenu">
           <span class="nav-icon">◉</span> Gastos
         </RouterLink>
@@ -35,10 +32,6 @@
         </RouterLink>
       </nav>
       <div class="sidebar-footer">
-        <div class="footer-top">
-          <span class="footer-label">Valor turno</span>
-          <span class="footer-val">$16.000 CLP</span>
-        </div>
         <div class="theme-toggle" @click="toggleDark">
           <span class="theme-icon">{{ isDark ? '☀' : '☾' }}</span>
           <span class="theme-label">{{ isDark ? 'Modo claro' : 'Modo oscuro' }}</span>
@@ -154,6 +147,7 @@ body { margin: 0; }
 
 .sidebar {
   width: 210px;
+  min-width: 210px;
   flex-shrink: 0;
   background: var(--bg-sidebar);
   border-right: 1px solid var(--border);
@@ -170,8 +164,8 @@ body { margin: 0; }
   .sidebar {
     position: fixed;
     top: 0;
-    left: -210px;
-    width: 210px;
+    left: -320px;
+    width: min(320px, 90vw);
     height: 100vh;
     z-index: 101;
     transition: left 0.3s ease;

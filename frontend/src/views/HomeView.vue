@@ -18,16 +18,16 @@
     <div class="page-content" v-if="resumen">
       <div class="metrics-row">
         <div class="metric-card">
-          <div class="metric-label">Bruto estimado</div>
-          <div class="metric-val">{{ formatCLP(resumen.bruto) }}</div>
+          <div class="metric-label">Sueldo líquido</div>
+          <div class="metric-val blue">{{ formatCLP(resumen.sueldo_estimado) }}</div>
         </div>
         <div class="metric-card">
-          <div class="metric-label">AFP + Fonasa (est.)</div>
-          <div class="metric-val red">−{{ formatCLP(resumen.descuento_afp + resumen.descuento_fonasa) }}</div>
+          <div class="metric-label">Gastos del mes</div>
+          <div class="metric-val red">−{{ formatCLP(resumen.total_gastos) }}</div>
         </div>
         <div class="metric-card">
-          <div class="metric-label">Neto estimado</div>
-          <div class="metric-val blue">{{ formatCLP(resumen.neto_estimado) }}</div>
+          <div class="metric-label">Ingresos extra</div>
+          <div class="metric-val green">+{{ formatCLP(resumen.total_extras) }}</div>
         </div>
         
         <div class="metric-card" :class="{ 'is-critical': !resumen.mes_cerrado && resumen.saldo_disponible < 50000 }">
@@ -44,22 +44,22 @@
         <div class="card">
           <div class="card-title">Desglose mensual</div>
 
-          <div class="section-label">Estimación</div>
+          <div class="section-label">Sueldo y Presupuesto</div>
           <div class="breakdown-row">
-            <span class="lbl">Bruto estimado</span>
-            <span>{{ formatCLP(resumen.bruto) }}</span>
+            <span class="lbl">Sueldo líquido</span>
+            <span>{{ formatCLP(resumen.sueldo_estimado) }}</span>
           </div>
           <div class="breakdown-row">
-            <span class="lbl">AFP (10,46%)</span>
-            <span class="neg">−{{ formatCLP(resumen.descuento_afp) }}</span>
+            <span class="lbl">Saldo mes anterior</span>
+            <span class="pos">{{ formatCLP(resumen.saldo_anterior) }}</span>
           </div>
-          <div class="breakdown-row">
-            <span class="lbl">Fonasa (7%)</span>
-            <span class="neg">−{{ formatCLP(resumen.descuento_fonasa) }}</span>
+          <div class="breakdown-row" v-if="resumen.total_extras > 0">
+            <span class="lbl">Ingresos extra</span>
+            <span class="pos">+{{ formatCLP(resumen.total_extras) }}</span>
           </div>
           <div class="breakdown-row total">
-            <span>Neto estimado</span>
-            <span class="blue">{{ formatCLP(resumen.neto_estimado) }}</span>
+            <span>Presupuesto total</span>
+            <span class="blue">{{ formatCLP((resumen.sueldo_estimado || 0) + (resumen.saldo_anterior || 0) + (resumen.total_extras || 0)) }}</span>
           </div>
 
           <template v-if="resumen.mes_cerrado">
@@ -88,10 +88,10 @@
               <span>Saldo libre final</span>
               <span class="green">{{ formatCLP(resumen.saldo_libre) }}</span>
             </div>
-            <div class="breakdown-row" v-if="resumen.diferencia_bruto !== null">
+            <div class="breakdown-row" v-if="resumen.diferencia_sueldo !== null">
               <span class="lbl">Diferencia estimado/real</span>
-              <span :class="resumen.diferencia_bruto >= 0 ? 'pos' : 'neg'">
-                {{ resumen.diferencia_bruto >= 0 ? '+' : '' }}{{ formatCLP(resumen.diferencia_bruto) }}
+              <span :class="resumen.diferencia_sueldo >= 0 ? 'pos' : 'neg'">
+                {{ resumen.diferencia_sueldo >= 0 ? '+' : '' }}{{ formatCLP(resumen.diferencia_sueldo) }}
               </span>
             </div>
           </template>
@@ -127,7 +127,10 @@
         </div>
 
         <div class="card">
-          <div class="card-title">Análisis de Gastos</div>
+          <div class="card-title">
+            Análisis de Gastos
+            <HelpTooltip message="Muestra la proporción entre gastos esenciales y discrecionales del mes actual." />
+          </div>
           <div v-if="Object.keys(gastosCat).length === 0" class="empty-state">
             Sin gastos registrados
           </div>
@@ -159,16 +162,12 @@
       </div>
 
       <div v-if="!resumen.mes_cerrado" class="card">
-        <div class="card-title">Cerrar mes</div>
-        <p class="cerrar-desc">Ingresa los valores de tu liquidación de sueldo al recibirla</p>
+        <div class="card-title">Cierre de mes</div>
+        <p class="cerrar-desc">El sueldo líquido base es fijo en 398526 CLP. Si el líquido que recibes cambia, úsalo al cerrar el mes.</p>
         <div class="form-row">
           <div class="form-group">
-            <label>Sueldo bruto (opcional, para referencia)</label>
-            <input v-model="sueldoBrutoReal" type="number" placeholder="Ej: 208000" class="input" />
-          </div>
-          <div class="form-group">
-            <label>Líquido a pago (requerido)</label>
-            <input v-model="sueldoReal" type="number" placeholder="Ej: 140268" class="input" />
+            <label>Líquido a pago recibido (requerido para cerrar)</label>
+            <input v-model="sueldoReal" type="number" placeholder="Ej: 750000" class="input" />
           </div>
           <button @click="cerrarMes" class="btn-primary" style="align-self:flex-end">Cerrar mes</button>
         </div>
@@ -178,7 +177,7 @@
     <div class="page-content" v-else>
       <div class="empty-state-big">
         <p>No hay datos para este mes todavía.</p>
-        <p>Agrega turnos en la sección Turnos para comenzar.</p>
+        <p>El sueldo líquido base es fijo en 398526 CLP al crear el mes.</p>
       </div>
     </div>
 
@@ -195,9 +194,28 @@
             <option v-for="(nombre, idx) in nombresMeses" :key="idx" :value="idx + 1">{{ nombre }}</option>
           </select>
         </div>
+        <div class="form-group" style="margin-top:12px">
+          <label>Sueldo líquido fijo</label>
+          <input value="398526" type="number" class="input" readonly />
+        </div>
         <div class="modal-actions">
           <button @click="mostrarModalNuevoMes = false" class="btn-secondary">Cancelar</button>
-          <button @click="crearMes" class="btn-primary">Crear</button>
+          <button @click="crearMes" class="btn-primary" :disabled="isCreating">{{ isCreating ? 'Creando...' : 'Crear' }}</button>
+        </div>
+      </div>
+    </div>
+
+    <div v-if="mostrarModalSaldoInicial" class="modal-overlay" @click.self="mostrarModalSaldoInicial = false">
+      <div class="modal">
+        <div class="modal-title">Saldo disponible ahora</div>
+        <p>Ingresa cuánto dinero tienes disponible en este momento. Este monto se usará como saldo inicial del primer mes.</p>
+        <div class="form-group">
+          <label>Disponible ahora (CLP)</label>
+          <input v-model.number="saldoInicialActual" type="number" class="input" placeholder="Ej: 150000" min="0" @keypress="$event.key.toLowerCase() === 'e' && $event.preventDefault()" />
+        </div>
+        <div class="modal-actions">
+          <button @click="mostrarModalSaldoInicial = false" class="btn-secondary">Cancelar</button>
+          <button @click="guardarSaldoInicial" class="btn-primary">Guardar</button>
         </div>
       </div>
     </div>
@@ -207,6 +225,7 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import { mesesService, gastosService } from '../services/api'
+import HelpTooltip from '../components/HelpTooltip.vue'
 
 const meses = ref([])
 const mesSeleccionado = ref(null)
@@ -236,8 +255,14 @@ const categoriasPrincipales = computed(() => {
     .map(([cat, monto]) => ({ cat, monto }))
   return sorted
 })
-const sueldoBrutoReal = ref('')
+const SUELDO_LIQUIDO = 398526
+const sueldoEstimadoEdicion = ref(0)
+const sueldoEstimadoNuevoMes = ref(SUELDO_LIQUIDO)
+const isCreating = ref(false)
+const sueldoReal = ref('')
 const mostrarModalNuevoMes = ref(false)
+const mostrarModalSaldoInicial = ref(false)
+const saldoInicialActual = ref(0)
 const nuevoAnio = ref(new Date().getFullYear())
 const nuevoMes = ref(new Date().getMonth() + 1)
 
@@ -289,6 +314,7 @@ const cargarResumen = async () => {
   try {
     const res = await mesesService.getResumen(mesSeleccionado.value)
     resumen.value = res.data
+    sueldoEstimadoEdicion.value = res.data.sueldo_estimado
     const cat = await gastosService.porCategoria(mesSeleccionado.value)
     gastosCat.value = cat.data
   } catch {
@@ -297,21 +323,65 @@ const cargarResumen = async () => {
   }
 }
 
+const guardarSueldoEstimado = async () => {
+  if (!mesSeleccionado.value) return
+  await mesesService.actualizarSueldoEstimado(mesSeleccionado.value, sueldoEstimadoEdicion.value || 0)
+  await cargarResumen()
+}
+
 const crearMes = async () => {
-  await mesesService.crear(nuevoAnio.value, nuevoMes.value)
-  mostrarModalNuevoMes.value = false
-  await cargarMeses()
+  if (isCreating.value) return
+  isCreating.value = true
+  try {
+    if (!nuevoAnio.value || !nuevoMes.value) {
+      alert('Completa año y mes')
+      return
+    }
+    const sueldo = SUELDO_LIQUIDO
+    const saldoInicial = meses.value.length === 0
+      ? Number(localStorage.getItem('ledgerly_saldo_inicial') || saldoInicialActual.value || 0)
+      : 0
+    await mesesService.crear(nuevoAnio.value, nuevoMes.value, sueldo, saldoInicial)
+    if (meses.value.length === 0) {
+      localStorage.removeItem('ledgerly_saldo_inicial')
+    }
+    mostrarModalNuevoMes.value = false
+    sueldoEstimadoNuevoMes.value = SUELDO_LIQUIDO
+    await cargarMeses()
+  } catch (err) {
+    console.error('Error crearMes', err)
+    alert('Error al crear mes. ¿El backend está corriendo en http://127.0.0.1:8000 ?')
+  } finally {
+    isCreating.value = false
+  }
 }
 
 const cerrarMes = async () => {
   if (!sueldoReal.value) return
-  await mesesService.cerrar(mesSeleccionado.value, sueldoReal.value, sueldoBrutoReal.value || null)
+  await mesesService.cerrar(mesSeleccionado.value, sueldoReal.value)
   await cargarResumen()
   sueldoReal.value = ''
-  sueldoBrutoReal.value = ''
 }
 
-onMounted(cargarMeses)
+const guardarSaldoInicial = () => {
+  if (saldoInicialActual.value === null || saldoInicialActual.value < 0) {
+    alert('Ingresa un saldo disponible válido (0 o mayor)')
+    return
+  }
+  localStorage.setItem('ledgerly_saldo_inicial', String(saldoInicialActual.value))
+  mostrarModalSaldoInicial.value = false
+}
+
+onMounted(async () => {
+  const stored = localStorage.getItem('ledgerly_saldo_inicial')
+  if (stored !== null) {
+    saldoInicialActual.value = Number(stored)
+  }
+  await cargarMeses()
+  if (meses.value.length === 0 && stored === null) {
+    mostrarModalSaldoInicial.value = true
+  }
+})
 </script>
 
 <style scoped>

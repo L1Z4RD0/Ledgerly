@@ -50,7 +50,7 @@
             <div class="savings-right">
               <div class="savings-actions">
                 <button @click="abrirAporte(a)" class="btn-aportar">Aportar</button>
-                <button v-if="!a.monto_meta" @click="abrirRetiro(a)" class="btn-retirar">Retirar</button>
+                <button v-if="a.monto_actual > 0" @click="abrirRetiro(a)" class="btn-retirar">Retirar</button>
                 <button @click="desactivar(a.id)" class="btn-delete">×</button>
               </div>
               <ProgressCircle v-if="a.monto_meta" :percentage="pctAhorrado(a)" type="ahorros" />
@@ -95,8 +95,13 @@
               <div class="savings-desc">{{ a.descripcion || 'Sin descripción' }}</div>
               <div class="savings-cuota">{{ formatCLP(a.monto_meta) }} — meta completada</div>
             </div>
-            <span class="badge-ok">Completo</span>
-            <ProgressCircle :percentage="100" type="ahorros" />
+            <div class="savings-right">
+              <div class="savings-actions">
+                <button v-if="a.monto_actual > 0" @click="abrirRetiro(a)" class="btn-retirar">Retirar</button>
+              </div>
+              <span class="badge-ok">Completo</span>
+              <ProgressCircle :percentage="100" type="ahorros" />
+            </div>
           </div>
         </div>
       </div>
@@ -172,11 +177,22 @@
           <span class="info-label">Saldo actual:</span>
           <span class="info-value">{{ formatCLP(ahorroSeleccionado?.monto_actual) }}</span>
         </div>
+        <div v-if="esAhorroCompletado" class="aviso">
+          Este ahorro ya se completó. El retiro será por el total ahorrado y el ahorro se mantendrá como completado.
+        </div>
         <div class="form-group">
           <label>Monto a retirar (CLP)</label>
-          <input v-model.number="montoRetiro" type="number" class="input" placeholder="Monto a retirar" min="0" @keypress="$event.key.toLowerCase() === 'e' && $event.preventDefault()" />
+          <input
+            v-model.number="montoRetiro"
+            :readonly="esAhorroCompletado"
+            :placeholder="esAhorroCompletado ? formatCLP(ahorroSeleccionado?.monto_actual) : 'Monto a retirar'"
+            type="number"
+            class="input"
+            min="0"
+            @keypress="$event.key.toLowerCase() === 'e' && $event.preventDefault()"
+          />
         </div>
-        <div v-if="montoRetiro > ahorroSeleccionado?.monto_actual" class="aviso">
+        <div v-if="!esAhorroCompletado && montoRetiro > ahorroSeleccionado?.monto_actual" class="aviso">
           ⚠️ El monto excede el saldo disponible
         </div>
         <div class="aviso" v-if="!mesSeleccionado">Selecciona un mes primero</div>
@@ -223,6 +239,7 @@ const ahorrosInactivos = computed(() => ahorros.value.filter(a => !a.activo))
 const totalAportadoMes = computed(() => aportesMes.value.reduce((acc, a) => acc + a.monto, 0))
 const totalMeta = computed(() => ahorrosActivos.value.filter(a => a.monto_meta).reduce((acc, a) => acc + a.monto_meta, 0))
 const totalAhorradoHistorico = computed(() => ahorros.value.reduce((acc, a) => acc + a.monto_actual, 0))
+const esAhorroCompletado = computed(() => ahorroSeleccionado.value?.monto_meta && ahorroSeleccionado.value?.activo === false)
 
 const disponibleActual = computed(() => {
   if (!mesResumen.value) return 0
@@ -278,9 +295,25 @@ const calcularMontoAporte = (ahorro) => {
 }
 
 const crearAhorro = async () => {
-  if (!nuevoNombre.value || !nuevaCuota.value) return
+  if (!nuevoNombre.value) {
+    alert('Ingresa un nombre para el ahorro')
+    return
+  }
+
+  const cuota = nuevaCuota.value ? parseFloat(nuevaCuota.value) : 0
   const meta = tieneMetaOptional.value && nuevoMontoMeta.value ? parseFloat(nuevoMontoMeta.value) : null
-  await ahorrosService.crear(nuevoNombre.value, nuevoDesc.value, meta, nuevaCuota.value, nuevoTipo.value)
+
+  if (tieneMetaOptional.value && !meta) {
+    alert('Ingresa la meta del ahorro')
+    return
+  }
+
+  if (nuevoTipo.value === 'porcentaje' && cuota <= 0) {
+    alert('Ingresa un porcentaje mayor a 0')
+    return
+  }
+
+  await ahorrosService.crear(nuevoNombre.value, nuevoDesc.value, meta, cuota, nuevoTipo.value)
   nuevoNombre.value = ''
   nuevoDesc.value = ''
   nuevoMontoMeta.value = ''
@@ -299,7 +332,7 @@ const abrirAporte = (a) => {
 
 const abrirRetiro = (a) => {
   ahorroSeleccionado.value = a
-  montoRetiro.value = ''
+  montoRetiro.value = a.monto_actual && a.monto_meta && a.activo === false ? a.monto_actual : ''
   mostrarModalRetiro.value = true
 }
 
@@ -325,12 +358,26 @@ const registrarAporte = async () => {
 
 const registrarRetiro = async () => {
   if (!montoRetiro.value || !mesSeleccionado.value) return
-  const montoNegativo = -parseFloat(montoRetiro.value)
-  await ahorrosService.aportar(ahorroSeleccionado.value.id, mesSeleccionado.value, montoNegativo)
-  mostrarModalRetiro.value = false
-  montoRetiro.value = ''
-  await cargarAhorros()
-  await cargarAportesMes()
+  let monto = parseFloat(montoRetiro.value)
+  if (esAhorroCompletado.value) {
+    monto = ahorroSeleccionado.value.monto_actual
+  }
+  if (monto <= 0) return
+  if (monto > ahorroSeleccionado.value.monto_actual) {
+    alert('No puedes retirar más de lo que ya ahorraste')
+    return
+  }
+  const montoNegativo = -Math.abs(monto)
+  try {
+    await ahorrosService.aportar(ahorroSeleccionado.value.id, mesSeleccionado.value, montoNegativo)
+    mostrarModalRetiro.value = false
+    montoRetiro.value = ''
+    await cargarAhorros()
+    await cargarAportesMes()
+  } catch (error) {
+    const detalle = error.response?.data?.detail || 'No se pudo retirar el dinero.'
+    alert(detalle)
+  }
 }
 
 const desactivar = async (id) => {

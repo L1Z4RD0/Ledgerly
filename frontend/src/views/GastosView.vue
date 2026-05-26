@@ -30,7 +30,10 @@
 
       <div class="two-col">
         <div class="card">
-          <div class="card-title">Distribución por Categoría</div>
+          <div class="card-title">
+            Distribución por Categoría
+            <HelpTooltip message="Visualiza cómo se reparten tus gastos entre categorías durante el mes." />
+          </div>
           <div v-if="gastos.length === 0" class="empty-state">Sin datos para graficar</div>
           <apexchart v-else type="donut" height="250" :options="donutOptions" :series="donutSeries"></apexchart>
         </div>
@@ -84,6 +87,7 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import { mesesService, gastosService } from '../services/api'
+import HelpTooltip from '../components/HelpTooltip.vue'
 
 const meses = ref([])
 const mesSeleccionado = ref(null)

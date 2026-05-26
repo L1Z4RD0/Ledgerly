@@ -18,14 +18,21 @@ def get_ahorros_activos(db: Session = Depends(get_db)):
 def crear_ahorro(nombre: str, descripcion: str, monto_meta: float = None, cuota: float = None, tipo: str = "fijo", db: Session = Depends(get_db)):
     if tipo not in ["fijo", "porcentaje"]:
         raise HTTPException(status_code=400, detail="Tipo debe ser 'fijo' o 'porcentaje'")
-    if monto_meta is None and cuota is None:
-        raise HTTPException(status_code=400, detail="Debe proporcionar al menos 'monto_meta' o 'cuota'")
     if monto_meta is not None and monto_meta <= 0:
         raise HTTPException(status_code=400, detail="La meta debe ser positiva")
-    if cuota is not None and cuota <= 0:
-        raise HTTPException(status_code=400, detail="La cuota debe ser positiva")
+    if cuota is not None and cuota < 0:
+        raise HTTPException(status_code=400, detail="La cuota debe ser positiva o cero")
+    if tipo == "porcentaje" and (cuota is None or cuota <= 0):
+        raise HTTPException(status_code=400, detail="El porcentaje debe ser mayor que cero")
     fecha_inicio = str(datetime.date.today())
-    nuevo = Ahorro(nombre=nombre, descripcion=descripcion, monto_meta=monto_meta if monto_meta and monto_meta > 0 else None, cuota=cuota or 0, tipo=tipo, fecha_inicio=fecha_inicio)
+    nuevo = Ahorro(
+        nombre=nombre,
+        descripcion=descripcion,
+        monto_meta=monto_meta if monto_meta and monto_meta > 0 else None,
+        cuota=cuota or 0,
+        tipo=tipo,
+        fecha_inicio=fecha_inicio
+    )
     db.add(nuevo)
     db.commit()
     db.refresh(nuevo)
@@ -47,8 +54,8 @@ def actualizar_ahorro(ahorro_id: int, nombre: str, descripcion: str, monto_meta:
 
 @router.post("/{ahorro_id}/aportar")
 def registrar_aporte(ahorro_id: int, mes_id: int, monto: float, db: Session = Depends(get_db)):
-    if monto <= 0:
-        raise HTTPException(status_code=400, detail="El monto a aportar debe ser positivo")
+    if monto == 0:
+        raise HTTPException(status_code=400, detail="El monto debe ser distinto de cero")
     
     ahorro = db.query(Ahorro).filter(Ahorro.id == ahorro_id).first()
     if not ahorro:
@@ -74,6 +81,9 @@ def registrar_aporte(ahorro_id: int, mes_id: int, monto: float, db: Session = De
             raise HTTPException(status_code=400, detail="Sin saldo disponible. Agrega un ingreso extra primero.")
         if monto > saldo_disponible:
             raise HTTPException(status_code=400, detail=f"Saldo insuficiente. Disponible: {saldo_disponible}")
+    else:
+        if abs(monto) > ahorro.monto_actual:
+            raise HTTPException(status_code=400, detail="No puedes retirar más de lo ahorrado")
 
     aporte = AporteAhorro(
         mes_id=mes_id,
@@ -82,14 +92,22 @@ def registrar_aporte(ahorro_id: int, mes_id: int, monto: float, db: Session = De
         fecha=str(datetime.date.today())
     )
     db.add(aporte)
+
+    was_completado = ahorro.monto_meta is not None and ahorro.activo == False
     ahorro.monto_actual += monto
-    
-    # Solo marcar como inactivo si tiene meta y la alcanza
-    if ahorro.monto_meta and ahorro.monto_actual >= ahorro.monto_meta:
-        ahorro.monto_actual = ahorro.monto_meta
-        ahorro.activo = False
-    # Si no tiene meta, nunca se desactiva automáticamente
-    
+
+    if ahorro.monto_actual < 0:
+        ahorro.monto_actual = 0
+
+    if ahorro.monto_meta:
+        if ahorro.monto_actual >= ahorro.monto_meta:
+            ahorro.monto_actual = ahorro.monto_meta
+            ahorro.activo = False
+        elif was_completado:
+            ahorro.activo = False
+        else:
+            ahorro.activo = True
+
     db.commit()
     db.refresh(ahorro)
     return ahorro

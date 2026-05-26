@@ -29,13 +29,19 @@
 
       <div class="two-col">
         <div class="card">
-          <div class="card-title">Tendencia: Ingresos vs Gastos</div>
+          <div class="card-title">
+            Tendencia: Ingresos vs Gastos
+            <HelpTooltip message="Compara la evolución histórica de tus ingresos totales frente a tus gastos mes a mes." />
+          </div>
           <div v-if="resumenes.length === 0" class="empty-state">Sin datos aún</div>
           <apexchart v-else type="area" height="280" :options="chartOptions" :series="chartSeries"></apexchart>
         </div>
 
         <div class="card">
-          <div class="card-title">Tasa de Ahorro Mensual</div>
+          <div class="card-title">
+            Tasa de Ahorro Mensual
+            <HelpTooltip message="Muestra qué porcentaje del ingreso total quedó como ahorro en cada mes." />
+          </div>
           <div v-if="resumenes.length === 0" class="empty-state">Esperando datos...</div>
           <apexchart v-else type="bar" height="280" :options="compareOptions" :series="compareSeries"></apexchart>
         </div>
@@ -81,7 +87,10 @@
         </div>
 
         <div class="card">
-          <div class="card-title">Evolución de indicadores económicos</div>
+          <div class="card-title">
+            Evolución de indicadores económicos
+            <HelpTooltip message="Compara la evolución histórica del Dólar, Euro y Yen en pesos chilenos." />
+          </div>
           <div v-if="indicadoresError" class="empty-state">No se pudieron cargar los indicadores económicos</div>
           <div v-else-if="!indicadoresCargados" class="empty-state">Cargando indicadores...</div>
           <div v-else>
@@ -104,7 +113,7 @@
           </div>
           <div v-for="r in resumenes" :key="r.mes_id" class="tabla-row">
             <span class="mes-label">{{ nombreMes(r.mes) }} {{ r.anio }}</span>
-            <span>{{ formatCLP(r.sueldo_real || r.neto_estimado) }}</span>
+            <span>{{ formatCLP(r.sueldo_real || r.sueldo_estimado) }}</span>
             <span class="green">+{{ formatCLP(r.total_extras) }}</span>
             <span class="red">−{{ formatCLP(r.total_gastos) }}</span>
             <span class="red">−{{ formatCLP(r.total_pagos_deuda) }}</span>
@@ -119,6 +128,7 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import { mesesService, gastosService, ahorrosService, findicService } from '../services/api'
+import HelpTooltip from '../components/HelpTooltip.vue'
 
 // --- ESTADO ---
 const meses = ref([])
@@ -217,7 +227,7 @@ const cargarIndicadores = async () => {
 
 // --- 1. CONFIG AREA CHART (TENDENCIAS) ---
 const chartSeries = computed(() => [
-  { name: 'Ingresos Totales', data: resumenes.value.map(r => (r.sueldo_real || r.neto_estimado || 0) + (r.total_extras || 0)) },
+  { name: 'Ingresos Totales', data: resumenes.value.map(r => (r.sueldo_real || r.sueldo_estimado || 0) + (r.total_extras || 0)) },
   { name: 'Gastos', data: resumenes.value.map(r => r.total_gastos || 0) }
 ])
 
@@ -250,7 +260,7 @@ const compareSeries = computed(() => [
   {
     name: 'Tasa de ahorro',
     data: resumenes.value.map(r => {
-      const ingresoTotal = (r.sueldo_real || r.neto_estimado || 0) + (r.total_extras || 0)
+      const ingresoTotal = (r.sueldo_real || r.sueldo_estimado || 0) + (r.total_extras || 0)
       return ingresoTotal > 0 && r.saldo_libre !== null && r.saldo_libre !== undefined
         ? Math.round((r.saldo_libre / ingresoTotal) * 100)
         : 0
@@ -372,7 +382,12 @@ onMounted(() => {
 @media (max-width: 768px) {
   .metrics-row { grid-template-columns: 1fr 1fr; }
   .two-col { grid-template-columns: 1fr; }
+  .indicator-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .tabla-header, .tabla-row { grid-template-columns: 1fr 1fr 1fr; }
   .tabla-header span:nth-child(n+4), .tabla-row span:nth-child(n+4) { display: none; }
+}
+
+@media (max-width: 480px) {
+  .indicator-grid { grid-template-columns: 1fr; }
 }
 </style>

@@ -1,19 +1,16 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from database import get_db
-from models import Mes, Semana, Gasto, IngresoExtra, PagoDeuda, AporteAhorro
+from models import Mes, Gasto, IngresoExtra, PagoDeuda, AporteAhorro
 
 router = APIRouter()
-
-AFP = 0.1046
-FONASA = 0.07
 
 @router.get("/")
 def get_meses(db: Session = Depends(get_db)):
     return db.query(Mes).all()
 
 @router.post("/")
-def crear_mes(anio: int, mes: int, db: Session = Depends(get_db)):
+def crear_mes(anio: int, mes: int, sueldo_estimado: float = 0, saldo_inicial: float = 0, db: Session = Depends(get_db)):
     existe = db.query(Mes).filter(Mes.anio == anio, Mes.mes == mes).first()
     if existe:
         raise HTTPException(status_code=400, detail="Ese mes ya existe")
@@ -25,7 +22,7 @@ def crear_mes(anio: int, mes: int, db: Session = Depends(get_db)):
         Mes.mes == anterior_mes_num
     ).first()
 
-    saldo_inicial = 0
+    saldo_anterior = saldo_inicial or 0
     if mes_anterior and mes_anterior.sueldo_real is not None:
         extras = db.query(IngresoExtra).filter(IngresoExtra.mes_id == mes_anterior.id).all()
         total_extras = sum(e.monto for e in extras)
@@ -36,25 +33,29 @@ def crear_mes(anio: int, mes: int, db: Session = Depends(get_db)):
         aportes = db.query(AporteAhorro).filter(AporteAhorro.mes_id == mes_anterior.id).all()
         total_aportes = sum(a.monto for a in aportes)
         saldo_anterior_anterior = mes_anterior.saldo_anterior or 0
-        saldo_inicial = mes_anterior.sueldo_real + saldo_anterior_anterior + total_extras - total_gastos - total_pagos - total_aportes
+        saldo_anterior = mes_anterior.sueldo_real + saldo_anterior_anterior + total_extras - total_gastos - total_pagos - total_aportes
 
-    nuevo = Mes(anio=anio, mes=mes, saldo_anterior=saldo_inicial)
+    nuevo = Mes(anio=anio, mes=mes, sueldo_estimado=sueldo_estimado, saldo_anterior=saldo_anterior)
     db.add(nuevo)
     db.commit()
     db.refresh(nuevo)
     return nuevo
+
+@router.put("/{mes_id}/sueldo_estimado")
+def actualizar_sueldo_estimado(mes_id: int, sueldo_estimado: float, db: Session = Depends(get_db)):
+    mes = db.query(Mes).filter(Mes.id == mes_id).first()
+    if not mes:
+        raise HTTPException(status_code=404, detail="Mes no encontrado")
+    mes.sueldo_estimado = sueldo_estimado
+    db.commit()
+    db.refresh(mes)
+    return {"mensaje": "Sueldo estimado actualizado", "sueldo_estimado": mes.sueldo_estimado}
 
 @router.get("/{mes_id}/resumen")
 def get_resumen(mes_id: int, db: Session = Depends(get_db)):
     mes = db.query(Mes).filter(Mes.id == mes_id).first()
     if not mes:
         raise HTTPException(status_code=404, detail="Mes no encontrado")
-
-    semanas = db.query(Semana).filter(Semana.mes_id == mes_id).all()
-    bruto = sum(s.turnos * s.valor_turno for s in semanas)
-    descuento_afp = round(bruto * AFP)
-    descuento_fonasa = round(bruto * FONASA)
-    neto_estimado = bruto - descuento_afp - descuento_fonasa
 
     extras = db.query(IngresoExtra).filter(IngresoExtra.mes_id == mes_id).all()
     total_extras = sum(e.monto for e in extras)
@@ -77,7 +78,7 @@ def get_resumen(mes_id: int, db: Session = Depends(get_db)):
 
     if mes_cerrado:
         # Al cerrar el mes se suma el liquido recibido
-        saldo_libre = mes.sueldo_real + saldo_anterior + total_extras - total_gastos - total_pagos_deuda
+        saldo_libre = mes.sueldo_real + saldo_anterior + total_extras - total_gastos - total_pagos_deuda - total_aportes
     else:
         saldo_libre = None
 
@@ -85,10 +86,7 @@ def get_resumen(mes_id: int, db: Session = Depends(get_db)):
         "mes_id": mes_id,
         "anio": mes.anio,
         "mes": mes.mes,
-        "bruto": bruto,
-        "descuento_afp": descuento_afp,
-        "descuento_fonasa": descuento_fonasa,
-        "neto_estimado": neto_estimado,
+        "sueldo_estimado": mes.sueldo_estimado or 0,
         "total_extras": total_extras,
         "total_gastos": total_gastos,
         "total_pagos_deuda": total_pagos_deuda,
@@ -97,11 +95,11 @@ def get_resumen(mes_id: int, db: Session = Depends(get_db)):
         "mes_cerrado": mes_cerrado,
         "sueldo_real": mes.sueldo_real,
         "saldo_libre": saldo_libre,
-        "diferencia_bruto": round(mes.sueldo_real - neto_estimado) if mes.sueldo_real else None
+        "diferencia_sueldo": round(mes.sueldo_real - mes.sueldo_estimado) if (mes.sueldo_real is not None and mes.sueldo_estimado is not None) else None
     }
 
 @router.put("/{mes_id}/cerrar")
-def cerrar_mes(mes_id: int, liquido: float, bruto_real: float = None, db: Session = Depends(get_db)):
+def cerrar_mes(mes_id: int, liquido: float, db: Session = Depends(get_db)):
     mes = db.query(Mes).filter(Mes.id == mes_id).first()
     if not mes:
         raise HTTPException(status_code=404, detail="Mes no encontrado")
@@ -122,9 +120,6 @@ def cerrar_mes(mes_id: int, liquido: float, bruto_real: float = None, db: Sessio
     saldo_libre = liquido + saldo_anterior + total_extras - total_gastos - total_pagos_deuda - total_aportes
 
     mes.sueldo_real = liquido
-    if bruto_real:
-        mes.notas = f"bruto_real:{bruto_real}"
-
     db.commit()
 
     siguiente_anio = mes.anio if mes.mes < 12 else mes.anio + 1
@@ -138,5 +133,4 @@ def cerrar_mes(mes_id: int, liquido: float, bruto_real: float = None, db: Sessio
         mes_siguiente.saldo_anterior = saldo_libre
         db.commit()
 
-    db.refresh(mes)
     return {"mensaje": "Mes cerrado", "saldo_libre": saldo_libre, "saldo_traspasado": saldo_libre if mes_siguiente else None}
