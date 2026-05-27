@@ -1,7 +1,7 @@
 import axios from 'axios'
 
 const api = axios.create({
-  baseURL: 'ledgerly-production-b032.up.railway.app',
+  baseURL: 'https://ledgerly-production-b032.up.railway.app',
   headers: {
     'Content-Type': 'application/json'
   }

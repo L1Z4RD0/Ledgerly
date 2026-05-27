@@ -350,7 +350,7 @@ const crearMes = async () => {
     await cargarMeses()
   } catch (err) {
     console.error('Error crearMes', err)
-    alert('Error al crear mes. ¿El backend está corriendo en http://127.0.0.1:8000 ?')
+    alert('Error al crear el mes en el servidor.')
   } finally {
     isCreating.value = false
   }
